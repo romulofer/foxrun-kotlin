@@ -1,0 +1,137 @@
+{
+  "name": "run-kotlin-vscode",
+  "displayName": "Run Kotlin",
+  "description": "Kotlin syntax highlighting, autocomplete and a Run button over main functions.",
+  "version": "0.1.0",
+  "publisher": "romulo-fernandes-evangelista",
+  "author": {
+    "name": "Rômulo Fernandes Evangelista"
+  },
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets"
+  ],
+  "keywords": [
+    "kotlin",
+    "kt",
+    "kts",
+    "run"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "languages": [
+      {
+        "id": "kotlin",
+        "aliases": [
+          "Kotlin",
+          "kotlin"
+        ],
+        "extensions": [
+          ".kt",
+          ".kts"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "kotlin",
+        "scopeName": "source.kotlin",
+        "path": "./syntaxes/kotlin.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "kotlin.run",
+        "title": "Run Kotlin File",
+        "category": "Kotlin",
+        "icon": "$(play)"
+      }
+    ],
+    "menus": {
+      "editor/title/run": [
+        {
+          "command": "kotlin.run",
+          "when": "editorLangId == kotlin",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "kotlin.run",
+          "when": "editorLangId == kotlin"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Run Kotlin",
+      "properties": {
+        "kotlin.run.kotlincPath": {
+          "type": "string",
+          "default": "kotlinc",
+          "description": "Path to the Kotlin compiler (kotlinc)."
+        },
+        "kotlin.run.javaPath": {
+          "type": "string",
+          "default": "java",
+          "description": "Path to the java executable used to run compiled programs."
+        },
+        "kotlin.run.args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Arguments passed to the program's main function."
+        },
+        "kotlin.run.jvmArgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Arguments passed to the JVM."
+        },
+        "kotlin.run.clearTerminal": {
+          "type": "boolean",
+          "default": true,
+          "description": "Clear the Kotlin Run terminal before each run."
+        },
+        "kotlin.completion.workspaceIndex": {
+          "type": "boolean",
+          "default": true,
+          "description": "Offer top level declarations from other Kotlin files in the workspace."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "compile-tests": "tsc -p .",
+    "test:unit": "npm run compile-tests && mocha",
+    "test:grammar": "vscode-tmgrammar-test -g syntaxes/kotlin.tmLanguage.json \"test/grammar/**/*.kt\"",
+    "test": "npm run test:unit && npm run test:grammar",
+    "test:integration": "npm run build && npm run compile-tests && vscode-test",
+    "package": "vsce package",
+    "vscode:prepublish": "npm run build -- --production"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.20.5",
+    "@types/vscode": "^1.90.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
+    "mocha": "^12.0.3",
+    "typescript": "^7.0.2",
+    "vscode-tmgrammar-test": "^0.1.3"
+  }
+}
