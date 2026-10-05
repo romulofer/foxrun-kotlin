@@ -1,13 +1,26 @@
 {
   "name": "run-kotlin-vscode",
   "displayName": "Run Kotlin",
-  "description": "Kotlin syntax highlighting, autocomplete and a Run button over main functions.",
+  "description": "Kotlin syntax highlighting, autocomplete and a one click Run button over main functions. Lightweight, no language server.",
   "version": "0.1.0",
   "publisher": "romulo-fernandes-evangelista",
   "author": {
     "name": "Rômulo Fernandes Evangelista"
   },
   "license": "MIT",
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#2B2D42",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/romulofer/run-kotlin-vscode.git"
+  },
+  "bugs": {
+    "url": "https://github.com/romulofer/run-kotlin-vscode/issues"
+  },
+  "homepage": "https://github.com/romulofer/run-kotlin-vscode#readme",
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -19,7 +32,12 @@
     "kotlin",
     "kt",
     "kts",
-    "run"
+    "run",
+    "runner",
+    "code runner",
+    "syntax",
+    "autocomplete",
+    "snippets"
   ],
   "main": "./dist/extension.js",
   "activationEvents": [],
@@ -119,7 +137,7 @@
     "test:grammar": "vscode-tmgrammar-test -g syntaxes/kotlin.tmLanguage.json \"test/grammar/**/*.kt\"",
     "test": "npm run test:unit && npm run test:grammar",
     "test:integration": "npm run build && npm run compile-tests && vscode-test",
-    "package": "vsce package --allow-missing-repository",
+    "package": "vsce package",
     "vscode:prepublish": "npm run build -- --production"
   },
   "devDependencies": {

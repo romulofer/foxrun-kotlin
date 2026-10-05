@@ -21,7 +21,7 @@ No JVM language server is required for features 1 and 2. Feature 3 needs a local
 | Syntax highlighting | TextMate grammar `source.kotlin` covering: line/block/KDoc comments, strings (plain, raw `"""`, templates `$x` and `${expr}`, escapes), chars, numbers (dec, hex, bin, long, unsigned, float, underscores), keywords (hard, soft, modifiers), annotations, declarations (`fun`, `class`, `interface`, `object`, `typealias`, `val`, `var`), types, operators, labels. |
 | Autocomplete | Kotlin hard/soft/modifier keywords. Snippets (`main`, `fun`, `class`, `data class`, `when`, `for`, `if`, `try`, `println`, ...). Common stdlib functions and types. Identifiers declared in the current document (functions, classes, properties, params). Top level declarations from other `.kt` files in the workspace (indexed, refreshed on save). Member completion after `.` is out of scope for v0.1 (only document words are offered). |
 | Run button | CodeLens `Run` (no debug in v0.1), shown above each top level `fun main(...)` (with or without args, `suspend` allowed). Also on `.kts` scripts (whole file). Command `kotlin.run` available from editor title bar and command palette. |
-| Run strategy | Single file mode: `kotlinc <file> -include-runtime -d <tmp>/<name>.jar` then `java -jar <jar>`. Scripts: `kotlinc -script <file>`. Runs in an integrated terminal named `Kotlin Run` so stdin works. File is saved before running. |
+| Run strategy | Single file mode: `kotlinc <file> -include-runtime -d <tmp>/<name>.jar` then `java -cp <jar> <FacadeClass>`. Scripts: `kotlinc -script <file>`. Processes are spawned directly (no shell) and shown in a pseudoterminal named `Kotlin Run` that prints only program output plus short status lines; stdin is forwarded. File is saved before running. |
 | Configuration | `kotlin.run.kotlincPath` (default `kotlinc`), `kotlin.run.javaPath` (default `java`), `kotlin.run.args` (program args), `kotlin.run.jvmArgs`, `kotlin.run.clearTerminal` (default `true`), `kotlin.completion.workspaceIndex` (default `true`). |
 | Tests | Unit tests (Mocha, no VS Code runtime) for pure logic. Grammar tests (`vscode-tmgrammar-test`). Integration tests (`@vscode/test-cli` + `@vscode/test-electron`) that activate the extension in a real VS Code. |
 
@@ -49,7 +49,9 @@ src/
     runCodeLensProvider.ts
     workspaceIndex.ts     FileSystemWatcher + symbol cache
   commands/
-    run.ts                kotlin.run: save, build command, send to terminal
+    run.ts                kotlin.run: save, build run steps, hand them to the runner
+  terminal/
+    runTerminal.ts        Pseudoterminal `Kotlin Run` over core/processSession.ts
 syntaxes/kotlin.tmLanguage.json
 language-configuration.json
 test/
@@ -77,8 +79,8 @@ A function is a runnable entry point when it is:
 
 1. Save the document if dirty.
 2. Check `kotlinc` is reachable (on failure show error with a "Open Settings" action).
-3. Build command with `core/runCommand.ts` (quotes paths, picks script vs jar mode, appends args).
-4. Reuse or create terminal `Kotlin Run`, optionally clear, `sendText(command)`.
+3. Build run steps with `core/runCommand.ts` (argv lists, script vs jar mode, args).
+4. Reuse or create the `Kotlin Run` pseudoterminal, optionally clear it, run the steps with `core/processSession.ts`. Output shows `Compiling X.kt...`, program output, then `Process finished with exit code N (Ts)`.
 
 Jar output dir: extension `globalStorageUri`/`build`, one jar per source file name hash to avoid clashes.
 
