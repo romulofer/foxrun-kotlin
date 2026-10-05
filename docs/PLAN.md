@@ -25,11 +25,11 @@ See [SPEC.md](SPEC.md). Each phase ends green (`npm run check && npm test`) and 
 
 ## Phase 3: VS Code adapters
 
-- [ ] `runCodeLensProvider.ts`
-- [ ] `commands/run.ts` (`kotlin.run`), editor title button, palette entry
-- [ ] `completionProvider.ts`
-- [ ] `workspaceIndex.ts` (watcher, cache)
-- [ ] Settings contribution
+- [x] `runCodeLensProvider.ts`
+- [x] `commands/run.ts` (`kotlin.run`), editor title button, palette entry
+- [x] `completionProvider.ts`
+- [x] `workspaceIndex.ts` (watcher, cache)
+- [x] Settings contribution
 
 ## Phase 4: Integration tests
 
