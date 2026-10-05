@@ -33,10 +33,10 @@ See [SPEC.md](SPEC.md). Each phase ends green (`npm run check && npm test`) and 
 
 ## Phase 4: Integration tests
 
-- [ ] Activation on `.kt`, language id is `kotlin`
-- [ ] CodeLens present on `main` fixture, absent on non main fixture
-- [ ] Completion returns keywords, snippets, document symbols
-- [ ] `kotlin.run` builds expected command (terminal stubbed via injected runner)
+- [x] Activation on `.kt`, language id is `kotlin`
+- [x] CodeLens present on `main` fixture, absent on non main fixture
+- [x] Completion returns keywords, snippets, document symbols
+- [x] `kotlin.run` builds expected command (terminal stubbed via injected runner)
 
 ## Phase 5: Polish
 
