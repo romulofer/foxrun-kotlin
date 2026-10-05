@@ -11,9 +11,9 @@ See [SPEC.md](SPEC.md). Each phase ends green (`npm run check && npm test`) and 
 
 ## Phase 1: Language + syntax highlighting
 
-- [ ] `language-configuration.json` (comments, brackets, pairs, folding, indent)
-- [ ] `syntaxes/kotlin.tmLanguage.json`
-- [ ] Grammar fixtures under `test/grammar/` with scope assertions
+- [x] `language-configuration.json` (comments, brackets, pairs, folding, indent)
+- [x] `syntaxes/kotlin.tmLanguage.json`
+- [x] Grammar fixtures under `test/grammar/` with scope assertions
 
 ## Phase 2: Core logic (pure TS, unit tested)
 
