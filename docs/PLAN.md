@@ -40,8 +40,8 @@ See [SPEC.md](SPEC.md). Each phase ends green (`npm run check && npm test`) and 
 
 ## Phase 5: Polish
 
-- [ ] README, CHANGELOG, icon placeholder, LICENSE
-- [ ] `npm run package` makes `.vsix`
+- [x] README, CHANGELOG, LICENSE
+- [x] `npm run package` makes `.vsix`
 
 ## Later (v0.2+)
 

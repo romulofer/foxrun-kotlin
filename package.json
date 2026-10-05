@@ -119,7 +119,7 @@
     "test:grammar": "vscode-tmgrammar-test -g syntaxes/kotlin.tmLanguage.json \"test/grammar/**/*.kt\"",
     "test": "npm run test:unit && npm run test:grammar",
     "test:integration": "npm run build && npm run compile-tests && vscode-test",
-    "package": "vsce package",
+    "package": "vsce package --allow-missing-repository",
     "vscode:prepublish": "npm run build -- --production"
   },
   "devDependencies": {
