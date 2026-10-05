@@ -17,11 +17,11 @@ See [SPEC.md](SPEC.md). Each phase ends green (`npm run check && npm test`) and 
 
 ## Phase 2: Core logic (pure TS, unit tested)
 
-- [ ] `lexer.ts` (comment/string aware scanning, brace depth)
-- [ ] `mainDetector.ts` + tests
-- [ ] `symbolExtractor.ts` + tests
-- [ ] `keywords.ts`, `stdlib.ts`, `snippets.ts`
-- [ ] `runCommand.ts` + tests (quoting, script mode, args)
+- [x] `lexer.ts` (comment/string aware scanning, brace depth)
+- [x] `mainDetector.ts` + tests
+- [x] `symbolExtractor.ts` + tests
+- [x] `keywords.ts`, `stdlib.ts`, `snippets.ts`
+- [x] `runCommand.ts` + tests (quoting, script mode, args)
 
 ## Phase 3: VS Code adapters
 
