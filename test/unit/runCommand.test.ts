@@ -1,8 +1,8 @@
 import * as assert from "node:assert/strict";
 import * as path from "node:path";
-import { buildRunCommand, isScript, jarPathFor, quote, RunSettings, shellKindFor } from "../../src/core/runCommand";
+import { buildRunSteps, isScript, jarPathFor, quoteForCmd, RunSettings } from "../../src/core/runCommand";
 
-const settings: RunSettings = { kotlincPath: "kotlinc", javaPath: "java", args: [], jvmArgs: [] };
+const settings: RunSettings = { kotlincPath: "/k/kotlinc", javaPath: "/j/java", args: [], jvmArgs: [] };
 
 describe("runCommand", () => {
   it("detects scripts", () => {
@@ -12,48 +12,30 @@ describe("runCommand", () => {
 
   it("builds a stable, file specific jar path", () => {
     const a = jarPathFor("/x/Main.kt", "/out");
-    const b = jarPathFor("/y/Main.kt", "/out");
     assert.equal(path.dirname(a), path.normalize("/out"));
     assert.match(path.basename(a), /^Main-[0-9a-f]{8}\.jar$/);
-    assert.notEqual(a, b);
+    assert.notEqual(a, jarPathFor("/y/Main.kt", "/out"));
     assert.equal(a, jarPathFor("/x/Main.kt", "/out"));
   });
 
-  it("quotes for posix shells", () => {
-    assert.equal(quote("/plain/path.kt", "posix"), "/plain/path.kt");
-    assert.equal(quote("/with space/a.kt", "posix"), "'/with space/a.kt'");
-    assert.equal(quote("it's", "posix"), "'it'\\''s'");
-  });
-
-  it("quotes for powershell and cmd", () => {
-    assert.equal(quote("C:\\a b\\x.kt", "powershell"), "'C:\\a b\\x.kt'");
-    assert.equal(quote("it's", "powershell"), "'it''s'");
-    assert.equal(quote("C:\\a b\\x.kt", "cmd"), "\"C:\\a b\\x.kt\"");
-  });
-
-  it("picks the shell kind from the shell path", () => {
-    assert.equal(shellKindFor("/bin/zsh", "linux"), "posix");
-    assert.equal(shellKindFor("C:\\Program Files\\PowerShell\\7\\pwsh.exe", "win32"), "powershell");
-    assert.equal(shellKindFor("C:\\Windows\\System32\\cmd.exe", "win32"), "cmd");
-    assert.equal(shellKindFor(undefined, "win32"), "powershell");
-    assert.equal(shellKindFor(undefined, "linux"), "posix");
-  });
-
   it("compiles to a jar and runs the main class", () => {
-    const target = { filePath: "/src/app.kt", mainClass: "com.x.AppKt", outDir: "/out" };
+    const target = { filePath: "/src/my app.kt", mainClass: "com.x.My_appKt", outDir: "/out" };
     const jar = jarPathFor(target.filePath, target.outDir);
-    const cmd = buildRunCommand(target, { ...settings, args: ["a b"], jvmArgs: ["-Xmx256m"] }, "posix");
-    assert.equal(cmd, `kotlinc /src/app.kt -include-runtime -d ${jar} && java -Xmx256m -cp ${jar} com.x.AppKt 'a b'`);
+    const steps = buildRunSteps(target, { ...settings, args: ["a b"], jvmArgs: ["-Xmx256m"] });
+    assert.deepEqual(steps, [
+      { kind: "compile", command: "/k/kotlinc", args: ["/src/my app.kt", "-include-runtime", "-d", jar] },
+      { kind: "run", command: "/j/java", args: ["-Xmx256m", "-cp", jar, "com.x.My_appKt", "a b"] },
+    ]);
   });
 
   it("uses kotlinc -script for .kts files", () => {
-    const target = { filePath: "/src/build me.kts", mainClass: "", outDir: "/out" };
-    assert.equal(buildRunCommand(target, { ...settings, args: ["x"] }, "posix"), "kotlinc -script '/src/build me.kts' x");
+    const steps = buildRunSteps({ filePath: "/src/build.kts", mainClass: "", outDir: "/out" }, { ...settings, args: ["x"] });
+    assert.deepEqual(steps, [{ kind: "run", command: "/k/kotlinc", args: ["-script", "/src/build.kts", "x"] }]);
   });
 
-  it("chains with if ($?) and the call operator in powershell", () => {
-    const target = { filePath: "C:\\src\\app.kt", mainClass: "AppKt", outDir: "C:\\out" };
-    const cmd = buildRunCommand(target, { ...settings, kotlincPath: "C:\\Kotlin Home\\kotlinc.bat" }, "powershell");
-    assert.match(cmd, /^& 'C:\\Kotlin Home\\kotlinc\.bat' C:\\src\\app\.kt -include-runtime -d \S+; if \(\$\?\) \{ java -cp \S+ AppKt \}$/);
+  it("quotes arguments for cmd.exe", () => {
+    assert.equal(quoteForCmd("C:\\plain\\x.kt"), "C:\\plain\\x.kt");
+    assert.equal(quoteForCmd("C:\\a b\\x.kt"), "\"C:\\a b\\x.kt\"");
+    assert.equal(quoteForCmd("say \"hi\""), "\"say \"\"hi\"\"\"");
   });
 });

@@ -1,12 +1,13 @@
 import * as assert from "node:assert/strict";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
-import type { CommandRunner } from "../../src/commands/run";
 import { findExecutable } from "../../src/core/executable";
+import type { RunStep } from "../../src/core/runCommand";
 import type { KotlinExtensionApi } from "../../src/extension";
+import type { CommandRunner } from "../../src/terminal/runTerminal";
 
 const EXTENSION_ID = "romulo-fernandes-evangelista.run-kotlin-vscode";
 
@@ -48,9 +49,9 @@ async function until<T>(probe: () => Promise<T | undefined>, timeoutMs = 10000):
 }
 
 class RecordingRunner implements CommandRunner {
-  readonly calls: { commandLine: string; cwd: string }[] = [];
-  run(commandLine: string, cwd: string): void {
-    this.calls.push({ commandLine, cwd });
+  readonly calls: { steps: RunStep[]; cwd: string; fileName: string }[] = [];
+  run(steps: RunStep[], cwd: string, fileName: string): void {
+    this.calls.push({ steps, cwd, fileName });
   }
 }
 
@@ -157,11 +158,18 @@ describe("Run Kotlin extension", () => {
 
     it("compiles to a jar and runs the file facade class", async () => {
       const uri = fixture("hello.kt");
-      const commandLine = await vscode.commands.executeCommand<string | undefined>("kotlin.run", uri);
+      const steps = await vscode.commands.executeCommand<RunStep[] | undefined>("kotlin.run", uri);
       assert.equal(runner.calls.length, 1);
-      assert.equal(runner.calls[0].commandLine, commandLine);
+      assert.deepEqual(runner.calls[0].steps, steps);
       assert.equal(runner.calls[0].cwd, path.dirname(uri.fsPath));
-      assert.match(commandLine!, /kotlinc .*hello\.kt -include-runtime -d \S+\.jar && \S*java -cp \S+\.jar demo\.HelloKt one 'two words'$/);
+      assert.equal(runner.calls[0].fileName, uri.fsPath);
+      const [compile, run] = steps!;
+      assert.equal(compile.command, path.join(toolsDir, "kotlinc"));
+      assert.deepEqual(compile.args.slice(0, 3), [uri.fsPath, "-include-runtime", "-d"]);
+      const jar = compile.args[3];
+      assert.match(jar, /hello-[0-9a-f]{8}\.jar$/);
+      assert.equal(run.command, path.join(toolsDir, "java"));
+      assert.deepEqual(run.args, ["-cp", jar, "demo.HelloKt", "one", "two words"]);
     });
 
     it("runs the active editor when no uri is given", async () => {
@@ -171,21 +179,31 @@ describe("Run Kotlin extension", () => {
     });
 
     it("runs scripts with kotlinc -script", async () => {
-      const commandLine = await vscode.commands.executeCommand<string | undefined>("kotlin.run", fixture("script.kts"));
-      assert.match(commandLine!, /kotlinc -script \S*script\.kts one 'two words'$/);
+      const steps = await vscode.commands.executeCommand<RunStep[] | undefined>("kotlin.run", fixture("script.kts"));
+      assert.deepEqual(steps, [
+        { kind: "run", command: path.join(toolsDir, "kotlinc"), args: ["-script", fixture("script.kts").fsPath, "one", "two words"] },
+      ]);
     });
 
     it("refuses files without main", async () => {
-      const commandLine = await vscode.commands.executeCommand<string | undefined>("kotlin.run", fixture("lib.kt"));
-      assert.equal(commandLine, undefined);
+      const steps = await vscode.commands.executeCommand<RunStep[] | undefined>("kotlin.run", fixture("lib.kt"));
+      assert.equal(steps, undefined);
       assert.equal(runner.calls.length, 0);
+    });
+
+    it("opens the Kotlin Run terminal with the default runner", async () => {
+      (await api()).setRunner(undefined);
+      await vscode.commands.executeCommand("kotlin.run", fixture("hello.kt"));
+      const terminal = await until(async () => vscode.window.terminals.find((t) => t.name === "Kotlin Run"));
+      assert.ok(terminal.creationOptions && "pty" in terminal.creationOptions, "expected an extension terminal");
+      terminal.dispose();
     });
 
     it("refuses when kotlinc cannot be found", async () => {
       await config().update("kotlincPath", path.join(toolsDir, "missing-kotlinc"), vscode.ConfigurationTarget.Global);
       try {
-        const commandLine = await vscode.commands.executeCommand<string | undefined>("kotlin.run", fixture("hello.kt"));
-        assert.equal(commandLine, undefined);
+        const steps = await vscode.commands.executeCommand<RunStep[] | undefined>("kotlin.run", fixture("hello.kt"));
+        assert.equal(steps, undefined);
         assert.equal(runner.calls.length, 0);
       } finally {
         await config().update("kotlincPath", path.join(toolsDir, "kotlinc"), vscode.ConfigurationTarget.Global);
@@ -202,8 +220,10 @@ describe("Run Kotlin extension", () => {
     (hasKotlin ? it : it.skip)("compiles and runs hello.kt", async () => {
       let output = "";
       (await api()).setRunner({
-        run(commandLine, cwd) {
-          output = execSync(commandLine, { cwd, encoding: "utf8", shell: "/bin/sh", stdio: ["ignore", "pipe", "ignore"] });
+        run(steps, cwd) {
+          for (const step of steps) {
+            output = execFileSync(step.command, step.args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+          }
         },
       });
       await vscode.commands.executeCommand("kotlin.run", fixture("hello.kt"));

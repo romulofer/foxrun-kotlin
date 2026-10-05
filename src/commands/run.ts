@@ -3,27 +3,8 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import { findExecutable } from "../core/executable";
 import { analyzeFile, facadeClassName } from "../core/mainDetector";
-import { buildRunCommand, isScript, RunSettings, shellKindFor } from "../core/runCommand";
-
-export const TERMINAL_NAME = "Kotlin Run";
-
-/** Executes a shell command line. Swappable so tests can observe runs without a terminal. */
-export interface CommandRunner {
-  run(commandLine: string, cwd: string, fresh: boolean): void;
-}
-
-export class TerminalRunner implements CommandRunner {
-  run(commandLine: string, cwd: string, fresh: boolean): void {
-    let terminal = vscode.window.terminals.find((t) => t.name === TERMINAL_NAME && t.exitStatus === undefined);
-    if (terminal && fresh) {
-      terminal.dispose();
-      terminal = undefined;
-    }
-    terminal ??= vscode.window.createTerminal({ name: TERMINAL_NAME, cwd });
-    terminal.show(true);
-    terminal.sendText(commandLine, true);
-  }
-}
+import { buildRunSteps, isScript, RunSettings, RunStep } from "../core/runCommand";
+import { CommandRunner } from "../terminal/runTerminal";
 
 export interface RunOptions {
   /** Directory for compiled jars. */
@@ -32,10 +13,10 @@ export interface RunOptions {
 }
 
 /**
- * Saves and runs a Kotlin file. Returns the command line that was sent to the runner,
+ * Saves and runs a Kotlin file. Returns the steps that were sent to the runner,
  * or undefined when the run was aborted (an error message has been shown).
  */
-export async function runKotlinFile(target: vscode.Uri | undefined, options: RunOptions): Promise<string | undefined> {
+export async function runKotlinFile(target: vscode.Uri | undefined, options: RunOptions): Promise<RunStep[] | undefined> {
   const document = await resolveDocument(target);
   if (!document) {
     void vscode.window.showErrorMessage("Open a Kotlin file to run it.");
@@ -59,24 +40,25 @@ export async function runKotlinFile(target: vscode.Uri | undefined, options: Run
   }
 
   const settings = readSettings(document.uri);
-  const required: [string, string][] = [[settings.kotlincPath, "kotlin.run.kotlincPath"]];
-  if (!script) required.push([settings.javaPath, "kotlin.run.javaPath"]);
-  for (const [exe, setting] of required) {
-    if (!findExecutable(exe, process.env, process.platform)) {
-      void showMissingExecutable(exe, setting);
-      return undefined;
-    }
-  }
+  // Resolve to absolute paths: processes are spawned without a shell.
+  const kotlinc = resolveExecutable(settings.kotlincPath, "kotlin.run.kotlincPath");
+  const java = script ? settings.javaPath : resolveExecutable(settings.javaPath, "kotlin.run.javaPath");
+  if (!kotlinc || !java) return undefined;
 
   fs.mkdirSync(options.outDir, { recursive: true });
-  const commandLine = buildRunCommand(
+  const steps = buildRunSteps(
     { filePath, mainClass: facadeClassName(filePath, info), outDir: options.outDir },
-    settings,
-    shellKindFor(vscode.env.shell, process.platform),
+    { ...settings, kotlincPath: kotlinc, javaPath: java },
   );
-  const fresh = vscode.workspace.getConfiguration("kotlin.run", document.uri).get<boolean>("clearTerminal", true);
-  options.runner().run(commandLine, path.dirname(filePath), fresh);
-  return commandLine;
+  const clear = vscode.workspace.getConfiguration("kotlin.run", document.uri).get<boolean>("clearTerminal", true);
+  options.runner().run(steps, path.dirname(filePath), filePath, clear);
+  return steps;
+}
+
+function resolveExecutable(command: string, setting: string): string | undefined {
+  const resolved = findExecutable(command, process.env, process.platform);
+  if (!resolved) void showMissingExecutable(command, setting);
+  return resolved;
 }
 
 async function resolveDocument(target: vscode.Uri | undefined): Promise<vscode.TextDocument | undefined> {

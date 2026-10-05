@@ -100,7 +100,7 @@
         "kotlin.run.clearTerminal": {
           "type": "boolean",
           "default": true,
-          "description": "Start each run in a fresh Kotlin Run terminal. When off, the existing terminal is reused."
+          "description": "Clear the Kotlin Run terminal before each run."
         },
         "kotlin.completion.workspaceIndex": {
           "type": "boolean",

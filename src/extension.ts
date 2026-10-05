@@ -1,9 +1,10 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { CommandRunner, runKotlinFile, TerminalRunner } from "./commands/run";
+import { runKotlinFile } from "./commands/run";
 import { KotlinCompletionProvider } from "./providers/completionProvider";
 import { RUN_COMMAND, RunCodeLensProvider } from "./providers/runCodeLensProvider";
 import { WorkspaceIndex } from "./providers/workspaceIndex";
+import { CommandRunner, TerminalRunner } from "./terminal/runTerminal";
 
 const KOTLIN: vscode.DocumentSelector = [
   { language: "kotlin", scheme: "file" },
@@ -18,6 +19,7 @@ export interface KotlinExtensionApi {
 export function activate(context: vscode.ExtensionContext): KotlinExtensionApi {
   const defaultRunner = new TerminalRunner();
   let runner: CommandRunner = defaultRunner;
+  context.subscriptions.push(defaultRunner);
 
   const index = new WorkspaceIndex();
   context.subscriptions.push(index);
