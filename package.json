@@ -3,7 +3,7 @@
   "displayName": "Run Kotlin",
   "description": "Kotlin syntax highlighting, autocomplete and a one click Run button over main functions. Lightweight, no language server.",
   "version": "0.1.0",
-  "publisher": "romulo-fernandes-evangelista",
+  "publisher": "LegendaryRedfox",
   "author": {
     "name": "Rômulo Fernandes Evangelista"
   },

@@ -9,7 +9,7 @@ import type { RunStep } from "../../src/core/runCommand";
 import type { KotlinExtensionApi } from "../../src/extension";
 import type { CommandRunner } from "../../src/terminal/runTerminal";
 
-const EXTENSION_ID = "romulo-fernandes-evangelista.run-kotlin-vscode";
+const EXTENSION_ID = "LegendaryRedfox.run-kotlin-vscode";
 
 function fixture(name: string): vscode.Uri {
   const folder = vscode.workspace.workspaceFolders?.[0];

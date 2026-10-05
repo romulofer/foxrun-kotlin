@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="images/icon.png" width="128" alt="Run Kotlin icon">
+  <img src="images/icon.png" width="128" alt="Kotlin logo">
 </p>
 
 <h1 align="center">Run Kotlin</h1>
@@ -90,6 +90,8 @@ Design notes live in [docs/SPEC.md](docs/SPEC.md) and [docs/PLAN.md](docs/PLAN.m
 
 [MIT](LICENSE)
 
+Kotlin and the Kotlin logo are trademarks of JetBrains s.r.o. This is a community project, not affiliated with or endorsed by JetBrains or the Kotlin Foundation.
+
 ---
 
 ## Português
@@ -166,3 +168,5 @@ As notas de design estão em [docs/SPEC.md](docs/SPEC.md) e [docs/PLAN.md](docs/
 ### Licença
 
 [MIT](LICENSE)
+
+Kotlin e o logo do Kotlin são marcas registradas da JetBrains s.r.o. Este é um projeto da comunidade, sem afiliação ou endosso da JetBrains ou da Kotlin Foundation.
