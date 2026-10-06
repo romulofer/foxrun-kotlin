@@ -20,10 +20,18 @@ export interface CommandRunner {
   run(steps: RunStep[], cwd: string, fileName: string, clear: boolean): void;
 }
 
+/** Observes the compile step of runs shown in the terminal. */
+export interface RunHooks {
+  started(fileName: string, cwd: string): void;
+  compiled(fileName: string, cwd: string, output: string, code: number | null): void;
+}
+
 /** Shows runs in a single `Kotlin Run` terminal that prints only the program's output. */
 export class TerminalRunner implements CommandRunner, vscode.Disposable {
   private terminal: vscode.Terminal | undefined;
   private pty: RunPty | undefined;
+  constructor(private readonly hooks?: RunHooks) {}
+
   private readonly onClose = vscode.window.onDidCloseTerminal((t) => {
     if (t === this.terminal) {
       this.terminal = undefined;
@@ -37,7 +45,8 @@ export class TerminalRunner implements CommandRunner, vscode.Disposable {
       this.terminal = vscode.window.createTerminal({ name: TERMINAL_NAME, pty: this.pty, iconPath: new vscode.ThemeIcon("play") });
     }
     this.terminal.show(true);
-    this.pty.start(steps, cwd, fileName, clear);
+    this.hooks?.started(fileName, cwd);
+    this.pty.start(steps, cwd, fileName, clear, this.hooks);
   }
 
   dispose(): void {
@@ -81,7 +90,7 @@ class RunPty implements vscode.Pseudoterminal {
     if (result.interrupt) this.session.kill();
   }
 
-  start(steps: RunStep[], cwd: string, fileName: string, clear: boolean): void {
+  start(steps: RunStep[], cwd: string, fileName: string, clear: boolean, hooks?: RunHooks): void {
     const go = () => {
       this.session?.kill();
       this.input.reset();
@@ -97,6 +106,9 @@ class RunPty implements vscode.Pseudoterminal {
           if (this.session === session) this.output(text, kind);
         },
         exit: () => {},
+        compiled: (output, code) => {
+          if (this.session === session) hooks?.compiled(fileName, cwd, output, code);
+        },
       });
       this.session = session;
       session.start();

@@ -81,3 +81,30 @@ describe("ProcessSession notes and env", () => {
     assert.match(r.text, /^yes:string\n/);
   });
 });
+
+describe("ProcessSession compile output", () => {
+  function runWithCompiled(steps: RunStep[]): Promise<{ output: string; code: number | null }[]> {
+    return new Promise((resolve) => {
+      const calls: { output: string; code: number | null }[] = [];
+      new ProcessSession(steps, process.cwd(), "/src/Demo.kt", {
+        output() {},
+        exit() {
+          resolve(calls);
+        },
+        compiled(output, code) {
+          calls.push({ output, code });
+        },
+      }).start();
+    });
+  }
+
+  it("reports compile output once, for failed compiles", async () => {
+    const calls = await runWithCompiled([node("compile", "console.error('A.kt:1:1: error: boom'); process.exit(1)")]);
+    assert.deepEqual(calls, [{ output: "A.kt:1:1: error: boom\n", code: 1 }]);
+  });
+
+  it("reports warnings of successful compiles and never run output", async () => {
+    const calls = await runWithCompiled([node("compile", "console.error('warn')"), node("run", "console.log('program')")]);
+    assert.deepEqual(calls, [{ output: "warn\n", code: 0 }]);
+  });
+});

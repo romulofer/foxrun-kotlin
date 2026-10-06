@@ -275,6 +275,22 @@ describe("Foxrun for Kotlin extension", () => {
 
     after(async () => (await api()).setRunner(undefined));
 
+    (hasKotlin ? it : it.skip)("shows compiler errors in the Problems panel", async () => {
+      const uri = fixture("broken.kt");
+      await vscode.commands.executeCommand("kotlin.run", uri);
+      const diagnostics = await until(async () => {
+        const found = vscode.languages.getDiagnostics(uri);
+        return found.length > 0 ? found : undefined;
+      }, 120000);
+      const error = diagnostics.find((d) => d.severity === vscode.DiagnosticSeverity.Error);
+      assert.ok(error, "expected an error diagnostic");
+      assert.match(error.message, /type mismatch/);
+      assert.equal(error.range.start.line, 1);
+      assert.equal(error.range.start.character, 17);
+      assert.equal(error.source, "kotlinc");
+      vscode.window.terminals.find((t) => t.name === "Kotlin Run")?.dispose();
+    });
+
     (hasKotlin ? it : it.skip)("compiles and runs hello.kt", async () => {
       let output = "";
       (await api()).setRunner({

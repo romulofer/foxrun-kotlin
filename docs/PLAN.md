@@ -66,9 +66,9 @@ Each phase ends with `npm run check && npm test`, a commit, and docs/changelog u
 
 ### Phase 9: Diagnostics (7.2)
 
-- [ ] `kotlincDiagnostics.ts` parser with tests
-- [ ] Collect compile output in `ProcessSession`, publish `DiagnosticCollection`
-- [ ] Terminal link provider
+- [x] `kotlincDiagnostics.ts` parser with tests
+- [x] Collect compile output in `ProcessSession`, publish `DiagnosticCollection`
+- [x] Terminal link provider
 
 ### Phase 10: Member completion (7.4)
 

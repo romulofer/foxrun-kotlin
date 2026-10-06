@@ -8,6 +8,8 @@ export interface SessionEvents {
   output(text: string, kind: OutputKind): void;
   /** Called once, after the last step ends, a step fails or the session is killed. */
   exit(code: number | null): void;
+  /** Called when a compile step ends, with everything it printed (for diagnostics). */
+  compiled?(output: string, code: number | null): void;
 }
 
 export type SpawnFn = typeof spawn;
@@ -21,6 +23,7 @@ export class ProcessSession {
   private killed = false;
   private finished = false;
   private readonly startedAt = Date.now();
+  private compileOutput = "";
 
   constructor(
     private readonly steps: readonly RunStep[],
@@ -72,8 +75,16 @@ export class ProcessSession {
       return;
     }
     this.child = child;
-    child.stdout?.setEncoding("utf8").on("data", (d: string) => this.events.output(d, "stdout"));
-    child.stderr?.setEncoding("utf8").on("data", (d: string) => this.events.output(d, "stderr"));
+    this.compileOutput = "";
+    const collect = step.kind === "compile";
+    child.stdout?.setEncoding("utf8").on("data", (d: string) => {
+      if (collect) this.compileOutput += d;
+      this.events.output(d, "stdout");
+    });
+    child.stderr?.setEncoding("utf8").on("data", (d: string) => {
+      if (collect) this.compileOutput += d;
+      this.events.output(d, "stderr");
+    });
     child.stdin?.on("error", () => {});
     child.on("error", (e) => {
       this.events.output(`Failed to start ${step.command}: ${e.message}\n`, "error");
@@ -82,6 +93,7 @@ export class ProcessSession {
     child.on("close", (code, signal) => {
       this.child = undefined;
       if (this.finished) return;
+      if (collect && !this.killed) this.events.compiled?.(this.compileOutput, code);
       if (this.killed) {
         this.events.output(`\nProcess stopped${signal ? ` (${signal})` : ""}\n`, "info");
         this.finish(code);

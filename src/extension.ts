@@ -5,6 +5,7 @@ import { clearBuildCache, runKotlinFile } from "./commands/run";
 import { checkSetup } from "./commands/setup";
 import { formatArgs, parseArgs } from "./core/argsParser";
 import { KotlinCompletionProvider } from "./providers/completionProvider";
+import { CompilerDiagnostics, CompilerOutputLinks } from "./providers/diagnostics";
 import { RUN_COMMAND, RunCodeLensProvider } from "./providers/runCodeLensProvider";
 import { WorkspaceIndex } from "./providers/workspaceIndex";
 import { CommandRunner, TerminalRunner } from "./terminal/runTerminal";
@@ -20,9 +21,10 @@ export interface KotlinExtensionApi {
 }
 
 export function activate(context: vscode.ExtensionContext): KotlinExtensionApi {
-  const defaultRunner = new TerminalRunner();
+  const diagnostics = new CompilerDiagnostics();
+  const defaultRunner = new TerminalRunner(diagnostics);
   let runner: CommandRunner = defaultRunner;
-  context.subscriptions.push(defaultRunner);
+  context.subscriptions.push(defaultRunner, diagnostics);
 
   const outDir = path.join(context.globalStorageUri.fsPath, "build");
   const index = new WorkspaceIndex();
@@ -34,6 +36,7 @@ export function activate(context: vscode.ExtensionContext): KotlinExtensionApi {
   context.subscriptions.push(
     vscode.languages.registerCodeLensProvider(KOTLIN, new RunCodeLensProvider()),
     vscode.languages.registerCompletionItemProvider(KOTLIN, new KotlinCompletionProvider(index), "."),
+    vscode.window.registerTerminalLinkProvider(new CompilerOutputLinks(() => diagnostics.lastCwd)),
     vscode.commands.registerCommand(RUN_COMMAND, (uri?: vscode.Uri) =>
       runKotlinFile(uri, { outDir, runner: () => runner }),
     ),

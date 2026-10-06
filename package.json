@@ -162,6 +162,11 @@
           },
           "default": {},
           "description": "Environment variables added when the program runs."
+        },
+        "kotlin.run.showDiagnostics": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show compiler errors and warnings in the Problems panel after a run."
         }
       }
     }
