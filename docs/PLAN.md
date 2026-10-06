@@ -82,7 +82,7 @@ Each phase ends with `npm run check && npm test`, a commit, and docs/changelog u
 
 ### Phase 12: Release 0.2.0
 
-- [ ] README (EN and PT), CHANGELOG, version bump, `.vsix`, integration tests green
+- [x] README (EN and PT), CHANGELOG, version bump, `.vsix`, integration tests green
 
 ## Later (v0.3+)
 

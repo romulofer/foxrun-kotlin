@@ -2,7 +2,7 @@
   "name": "foxrun-kotlin",
   "displayName": "Foxrun for Kotlin",
   "description": "Kotlin syntax highlighting, autocomplete and a one click Run button over main functions. Lightweight, no language server.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "LegendaryRedfox",
   "author": {
     "name": "Rômulo Fernandes Evangelista"
@@ -195,7 +195,7 @@
     "test:grammar": "vscode-tmgrammar-test -g syntaxes/kotlin.tmLanguage.json \"test/grammar/**/*.kt\"",
     "test": "npm run test:unit && npm run test:grammar",
     "test:integration": "npm run build && npm run compile-tests && vscode-test",
-    "package": "vsce package",
+    "package": "vsce package --no-dependencies",
     "vscode:prepublish": "npm run build -- --production"
   },
   "devDependencies": {
