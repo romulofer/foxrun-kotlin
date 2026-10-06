@@ -9,7 +9,7 @@ const KOTLIN_GLOB = "**/*.{kt,kts}";
 const EXCLUDE_GLOB = "**/{build,out,node_modules,.gradle,.git}/**";
 const MAX_FILES = 5000;
 
-/** Top level, non private declarations of every Kotlin file in the workspace. */
+/** Top level and member (non private) declarations of every Kotlin file in the workspace. */
 export class WorkspaceIndex implements vscode.Disposable {
   private readonly files = new Map<string, IndexedSymbol[]>();
   private readonly disposables: vscode.Disposable[] = [];
@@ -34,12 +34,21 @@ export class WorkspaceIndex implements vscode.Disposable {
     return this.ready;
   }
 
-  /** Symbols from all indexed files except `exclude`. */
+  /** Top level symbols from all indexed files except `exclude`. */
   symbols(exclude?: vscode.Uri): IndexedSymbol[] {
+    return this.collect(exclude, (s) => s.topLevel);
+  }
+
+  /** Members of classes, interfaces and objects from all indexed files except `exclude`. */
+  members(exclude?: vscode.Uri): IndexedSymbol[] {
+    return this.collect(exclude, (s) => s.container !== undefined);
+  }
+
+  private collect(exclude: vscode.Uri | undefined, keep: (s: IndexedSymbol) => boolean): IndexedSymbol[] {
     const skip = exclude?.toString();
     const result: IndexedSymbol[] = [];
     for (const [key, symbols] of this.files) {
-      if (key !== skip) result.push(...symbols);
+      if (key !== skip) result.push(...symbols.filter(keep));
     }
     return result;
   }
@@ -55,7 +64,7 @@ export class WorkspaceIndex implements vscode.Disposable {
 
   private indexText(uri: vscode.Uri, text: string): void {
     const symbols = extractSymbols(text)
-      .filter((s) => s.topLevel && !s.isPrivate)
+      .filter((s) => (s.topLevel || s.container !== undefined) && !s.isPrivate)
       .map((s) => ({ ...s, uri }));
     this.files.set(uri.toString(), symbols);
   }

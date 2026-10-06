@@ -107,4 +107,30 @@ describe("extractSymbols", () => {
     const symbols = extractSymbols("val k = Foo::class\n// fun ghost() {}\nval s = \"class Ghost\"");
     assert.deepEqual(symbols.map((s) => s.name), ["k", "s"]);
   });
+
+  it("records the owning type of members", () => {
+    const src = [
+      "class Person(val name: String, age: Int) {",
+      "  var nick = \"\"",
+      "  fun greet(): String { val local = 1; return nick }",
+      "  companion object { val DEFAULT = 1 }",
+      "  class Inner { fun deep() {} }",
+      "}",
+      "enum class Color { RED, GREEN }",
+      "fun top() {}",
+    ].join("\n");
+    const symbols = extractSymbols(src);
+    const owner = (name: string) => find(symbols, name).container;
+    assert.equal(owner("name"), "Person");
+    assert.equal(owner("age"), undefined);
+    assert.equal(owner("nick"), "Person");
+    assert.equal(owner("greet"), "Person");
+    assert.equal(owner("local"), undefined);
+    assert.equal(owner("DEFAULT"), "Person");
+    assert.equal(owner("Inner"), "Person");
+    assert.equal(owner("deep"), "Inner");
+    assert.equal(owner("RED"), "Color");
+    assert.equal(owner("Person"), undefined);
+    assert.equal(owner("top"), undefined);
+  });
 });

@@ -72,8 +72,8 @@ Each phase ends with `npm run check && npm test`, a commit, and docs/changelog u
 
 ### Phase 10: Member completion (7.4)
 
-- [ ] `stdlibMembers.ts`, `memberCompletion.ts` with tests
-- [ ] Wire into `completionProvider.ts` on `.`
+- [x] `stdlibMembers.ts`, `memberCompletion.ts` with tests
+- [x] Wire into `completionProvider.ts` on `.`
 
 ### Phase 11: Debugging (7.5)
 

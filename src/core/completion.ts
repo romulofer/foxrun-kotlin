@@ -1,5 +1,6 @@
 import { ALL_KEYWORDS } from "./keywords";
 import { computeLineStarts, contextAt, lex, lineAt } from "./lexer";
+import { memberCompletions } from "./memberCompletion";
 import { SNIPPETS } from "./snippets";
 import { STDLIB, StdlibEntry } from "./stdlib";
 import { extractSymbols, KotlinSymbol, KotlinSymbolKind } from "./symbolExtractor";
@@ -8,12 +9,14 @@ export type CandidateKind = KotlinSymbolKind | "keyword" | "snippet" | "word";
 
 /** Lower groups sort first. */
 export enum Group {
-  Document = 0,
-  Workspace = 1,
-  Keyword = 2,
-  Snippet = 3,
-  Stdlib = 4,
-  Word = 5,
+  /** Members of the receiver's type after a dot. */
+  Member = 0,
+  Document = 1,
+  Workspace = 2,
+  Keyword = 3,
+  Snippet = 4,
+  Stdlib = 5,
+  Word = 6,
 }
 
 export interface CompletionCandidate {
@@ -37,6 +40,7 @@ export function computeCompletions(
   text: string,
   offset: number,
   workspaceSymbols: readonly KotlinSymbol[] = [],
+  workspaceMembers: readonly KotlinSymbol[] = [],
 ): CompletionCandidate[] | undefined {
   if (contextAt(text, offset) !== "code") return undefined;
 
@@ -54,11 +58,18 @@ export function computeCompletions(
   };
 
   if (before === "." && text[wordStart - 2] !== ".") {
+    const members = memberCompletions(text, wordStart - 1, [...extractSymbols(text), ...workspaceMembers]);
+    for (const m of members ?? []) {
+      addSymbolLike({ label: m.label, kind: m.kind, group: Group.Member, detail: m.detail, snippet: m.snippet });
+    }
     for (const entry of STDLIB) {
       if (MEMBER_STDLIB.has(entry.name)) addSymbolLike(stdlibCandidate(entry));
     }
-    for (const word of documentWords(text, wordStart, offset)) {
-      addSymbolLike({ label: word, kind: "word", group: Group.Word });
+    // Without a known receiver type, fall back to words seen in the document.
+    if (!members) {
+      for (const word of documentWords(text, wordStart, offset)) {
+        addSymbolLike({ label: word, kind: "word", group: Group.Word });
+      }
     }
     return out;
   }

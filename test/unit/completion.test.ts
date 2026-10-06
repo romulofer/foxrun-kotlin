@@ -54,12 +54,30 @@ describe("computeCompletions", () => {
     assert.equal(complete("@Dep|"), undefined);
   });
 
-  it("offers scope functions and document words after a dot", () => {
-    const items = complete("val total = 1\nval x = total.|")!;
+  it("offers scope functions and document words after a dot with an unknown receiver", () => {
+    const items = complete("val total = 1\nval x = unknown().|")!;
     const ls = items.map((c) => c.label);
     assert.ok(ls.includes("let"));
     assert.ok(ls.includes("total"));
     assert.equal(ls.includes("println"), false);
     assert.equal(ls.includes("class"), false);
+  });
+
+  it("offers members of the receiver type first after a dot", () => {
+    const items = complete(`val s = "abc"\nval x = s.|`)!;
+    const length = items.find((c) => c.label === "length");
+    assert.equal(length?.group, Group.Member);
+    assert.equal(length?.kind, "property");
+    assert.ok(items.some((c) => c.label === "uppercase" && c.snippet === "uppercase()"));
+    assert.ok(items.some((c) => c.label === "let"), "scope functions stay available");
+    assert.equal(items.some((c) => c.kind === "word"), false, "no word fallback when the type is known");
+  });
+
+  it("uses workspace members for receivers declared in other files", () => {
+    const members: KotlinSymbol[] = [
+      { name: "greet", kind: "function", line: 0, topLevel: false, isPrivate: false, detail: "fun greet(): String", container: "Person" },
+    ];
+    const items = computeCompletions("val p = Person()\np.", "val p = Person()\np.".length, [], members)!;
+    assert.equal(items.find((c) => c.label === "greet")?.group, Group.Member);
   });
 });

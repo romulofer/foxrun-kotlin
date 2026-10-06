@@ -125,6 +125,30 @@ describe("Foxrun for Kotlin extension", () => {
     });
   });
 
+  describe("member completion", () => {
+    async function labelsAfter(marker: string): Promise<string[]> {
+      const document = await open("members.kt");
+      const offset = document.getText().indexOf(marker) + marker.length;
+      return completionLabels(document, document.positionAt(offset));
+    }
+
+    it("offers members of a class declared in the file", async () => {
+      const labels = await labelsAfter("    p.");
+      for (const name of ["name", "greet", "toString"]) assert.ok(labels.includes(name), `${name} missing`);
+      assert.equal(labels.includes("println"), false);
+    });
+
+    it("offers String members after a string literal", async () => {
+      const labels = await labelsAfter('"abc".');
+      for (const name of ["length", "uppercase", "substring"]) assert.ok(labels.includes(name), `${name} missing`);
+    });
+
+    it("offers List members after a listOf call", async () => {
+      const labels = await labelsAfter("listOf(1).");
+      for (const name of ["map", "filter", "size"]) assert.ok(labels.includes(name), `${name} missing`);
+    });
+  });
+
   describe("kotlin.run", function () {
     if (process.platform === "win32") return;
 

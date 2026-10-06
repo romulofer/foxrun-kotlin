@@ -23,7 +23,8 @@ export class KotlinCompletionProvider implements vscode.CompletionItemProvider {
   provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): vscode.CompletionItem[] | undefined {
     const useIndex = vscode.workspace.getConfiguration("kotlin.completion", document.uri).get<boolean>("workspaceIndex", true);
     const workspaceSymbols = useIndex && this.index ? this.index.symbols(document.uri) : [];
-    const candidates = computeCompletions(document.getText(), document.offsetAt(position), workspaceSymbols);
+    const workspaceMembers = useIndex && this.index ? this.index.members(document.uri) : [];
+    const candidates = computeCompletions(document.getText(), document.offsetAt(position), workspaceSymbols, workspaceMembers);
     return candidates?.map(toItem);
   }
 }
@@ -35,7 +36,9 @@ function toItem(c: CompletionCandidate): vscode.CompletionItem {
   if (c.documentation) item.documentation = new vscode.MarkdownString(c.documentation);
   if (c.snippet) {
     item.insertText = new vscode.SnippetString(c.snippet);
-    item.documentation = new vscode.MarkdownString().appendCodeblock(c.snippet.replace(/\$\{\d+:?([^}]*)\}|\$\d+/g, "$1"), "kotlin");
+    if (c.kind === "snippet") {
+      item.documentation = new vscode.MarkdownString().appendCodeblock(c.snippet.replace(/\$\{\d+:?([^}]*)\}|\$\d+/g, "$1"), "kotlin");
+    }
   }
   return item;
 }

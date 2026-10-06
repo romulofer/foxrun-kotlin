@@ -22,6 +22,8 @@ export interface KotlinSymbol {
   isPrivate: boolean;
   /** Short signature, e.g. `fun greet(name: String): String`. */
   detail: string;
+  /** Name of the class, interface or object that declares this member (undefined for everything else). */
+  container?: string;
 }
 
 const MODIFIERS = new Set<string>(MODIFIER_KEYWORDS);
@@ -37,6 +39,9 @@ class Extractor {
   private parenDepth = 0;
   /** Kind of each open brace: a class/object/interface body or any other block. */
   private readonly braces: ("type" | "block")[] = [];
+  /** Name of the type whose body each open brace starts, parallel to `braces`. */
+  private readonly typeNames: (string | undefined)[] = [];
+  private pendingTypeName: string | undefined;
   /** Set after a type header, until its body brace (or another declaration) is seen. */
   private pendingTypeBody: number | undefined;
 
@@ -85,10 +90,12 @@ class Extractor {
       this.braceDepth++;
       const isTypeBody = this.pendingTypeBody === this.parenDepth;
       this.braces.push(isTypeBody ? "type" : "block");
+      this.typeNames.push(isTypeBody ? this.pendingTypeName : undefined);
       if (isTypeBody) this.pendingTypeBody = undefined;
     } else if (t.text === "}") {
       this.braceDepth = Math.max(0, this.braceDepth - 1);
       this.braces.pop();
+      this.typeNames.pop();
     }
     else if (t.text === "(") this.parenDepth++;
     else if (t.text === ")") this.parenDepth = Math.max(0, this.parenDepth - 1);
@@ -104,7 +111,19 @@ class Extractor {
     return isPunct(prev, ".") || (isPunct(prev, ":") && isPunct(this.tokens[i - 2], ":"));
   }
 
-  private add(name: Token, kind: KotlinSymbolKind, declStart: number, detail: string, topLevel = this.topLevel): void {
+  /** The type whose body directly encloses the current position. */
+  private get currentType(): string | undefined {
+    return this.braces[this.braces.length - 1] === "type" ? this.typeNames[this.typeNames.length - 1] : undefined;
+  }
+
+  private add(
+    name: Token,
+    kind: KotlinSymbolKind,
+    declStart: number,
+    detail: string,
+    topLevel = this.topLevel,
+    container = this.currentType,
+  ): void {
     this.symbols.push({
       name: name.text,
       kind,
@@ -112,6 +131,7 @@ class Extractor {
       topLevel,
       isPrivate: this.hasPrivateModifier(declStart),
       detail: detail.replace(/\s+/g, " ").trim(),
+      ...(container ? { container } : {}),
     });
   }
 
@@ -143,7 +163,7 @@ class Extractor {
     const close = this.matching(j, "(", ")");
     const end = this.signatureEnd(close === -1 ? j : close);
     this.add(name, "function", i, this.src.slice(tokens[i].start, end));
-    if (close !== -1) this.parameters(j, close, "parameter");
+    if (close !== -1) this.parameters(j, close, "parameter", undefined);
   }
 
   private typeDecl(i: number): void {
@@ -153,6 +173,8 @@ class Extractor {
     // Anonymous and companion objects have a body but no name.
     if (kind !== "typealias") this.pendingTypeBody = this.parenDepth;
     const name = tokens[i + 1];
+    // Companion and anonymous objects contribute members to the type that contains them.
+    if (kind !== "typealias") this.pendingTypeName = name?.kind === "identifier" ? name.text : this.currentType;
     if (!name || name.kind !== "identifier") return;
     this.add(name, kind, i, `${kw.text} ${name.text}`);
 
@@ -162,10 +184,10 @@ class Extractor {
     }
     if (isPunct(tokens[j], "(")) {
       const close = this.matching(j, "(", ")");
-      if (close !== -1) this.parameters(j, close, "parameter");
+      if (close !== -1) this.parameters(j, close, "parameter", name.text);
     }
 
-    if (this.declaredWith(i, "enum")) this.enumEntries(i);
+    if (this.declaredWith(i, "enum")) this.enumEntries(i, name.text);
   }
 
   private declaredWith(declIndex: number, modifier: string): boolean {
@@ -177,7 +199,7 @@ class Extractor {
     return false;
   }
 
-  private enumEntries(declIndex: number): void {
+  private enumEntries(declIndex: number, owner: string): void {
     const tokens = this.tokens;
     let j = declIndex + 2;
     let parens = 0;
@@ -193,7 +215,7 @@ class Extractor {
       while (isPunct(tokens[j], "@")) j += 2;
       const entry = tokens[j];
       if (!entry || entry.kind !== "identifier") return;
-      this.add(entry, "enumEntry", j, entry.text, false);
+      this.add(entry, "enumEntry", j, entry.text, false, owner);
       j++;
       if (isPunct(tokens[j], "(")) j = this.matching(j, "(", ")") + 1;
       if (isPunct(tokens[j], "{")) j = this.matching(j, "{", "}") + 1;
@@ -256,7 +278,8 @@ class Extractor {
     }
   }
 
-  private parameters(open: number, close: number, kind: KotlinSymbolKind): void {
+  /** `owner` is the type whose primary constructor this is; its `val`/`var` parameters become members. */
+  private parameters(open: number, close: number, kind: KotlinSymbolKind, owner: string | undefined): void {
     const tokens = this.tokens;
     let depth = 0;
     for (let k = open + 1; k < close; k++) {
@@ -276,7 +299,7 @@ class Extractor {
       const declKeyword = isIdent(prev, "val") || isIdent(prev, "var");
       const detailStart = declKeyword ? prev.start : t.start;
       const detail = this.src.slice(detailStart, tokens[end - 1].end);
-      this.add(t, declKeyword ? "property" : kind, k, detail, false);
+      this.add(t, declKeyword ? "property" : kind, k, detail, false, declKeyword ? owner : undefined);
     }
   }
 
