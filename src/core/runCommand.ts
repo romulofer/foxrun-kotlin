@@ -8,6 +8,8 @@ export interface RunSettings {
   jvmArgs: readonly string[];
   /** Extra environment variables for the process that runs the program. */
   env?: Readonly<Record<string, string>>;
+  /** Start the JVM suspended with a JDWP agent listening on this local port (not used for scripts). */
+  debugPort?: number;
 }
 
 export interface RunTarget {
@@ -59,6 +61,11 @@ export function staleJars(filePath: string, files: readonly string[], keep: stri
   return files.filter((f) => f !== keep && f.startsWith(`${prefix}-`) && /^-[0-9a-f]{8}\.jar$/.test(f.slice(prefix.length)));
 }
 
+/** JVM argument that waits for a debugger on `port` before running `main`. */
+export function debugAgentArg(port: number): string {
+  return `-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=127.0.0.1:${port}`;
+}
+
 function withEnv(step: RunStep, settings: RunSettings): RunStep {
   return settings.env && Object.keys(settings.env).length > 0 ? { ...step, env: { ...settings.env } } : step;
 }
@@ -70,7 +77,7 @@ export function buildRunSteps(target: RunTarget, settings: RunSettings): RunStep
   }
   const jar = jarPathFor(target.filePath, target.outDir, target.jarKey);
   const run = withEnv(
-    { kind: "run", command: settings.javaPath, args: [...settings.jvmArgs, "-cp", jar, target.mainClass, ...settings.args] },
+    { kind: "run", command: settings.javaPath, args: [...(settings.debugPort ? [debugAgentArg(settings.debugPort)] : []), ...settings.jvmArgs, "-cp", jar, target.mainClass, ...settings.args] },
     settings,
   );
   if (target.skipCompile) return [{ ...run, note: "Using cached build" }];

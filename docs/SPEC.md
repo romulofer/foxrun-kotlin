@@ -145,7 +145,7 @@ Scope: faster runs, compiler diagnostics, setup help, member completion, debuggi
 
 - A `Debug` CodeLens sits next to `Run` above every `main`. Command `kotlin.debug`, also in the editor title run menu and the palette.
 - Strategy: compile as for Run (cache applies), then launch `java -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=127.0.0.1:<free port> -cp <jar> <Main> <args>` in the `Kotlin Run` terminal, wait until the agent prints `Listening for transport`, then call `vscode.debug.startDebugging` with a `java` attach configuration (`hostName`, `port`, `projectName` unset).
-- This needs the `vscjava.vscode-java-debug` extension. If absent, show a message with an `Install` action that opens it in the Extensions view. Extension dependency is NOT declared, so Run keeps working without it.
+- This needs a Java debugger extension: `vscjava.vscode-java-debug` (debug type `java`) or `oracle.oracle-java` (debug type `jdk`, port as a string); the first installed one is used. If none is installed, show a message with an action that opens Debugger for Java in the Extensions view. No extension dependency is declared, so Run keeps working without them.
 - Scripts (`.kts`) cannot be debugged; the lens is not shown for them.
 - Core: `buildDebugSteps()` in `runCommand.ts`, `freePort` helper in the adapter.
 

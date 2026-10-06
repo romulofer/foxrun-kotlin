@@ -77,8 +77,8 @@ Each phase ends with `npm run check && npm test`, a commit, and docs/changelog u
 
 ### Phase 11: Debugging (7.5)
 
-- [ ] `buildDebugSteps`, `kotlin.debug`, `Debug` CodeLens
-- [ ] Java debug extension check, attach flow, tests
+- [x] `buildDebugSteps`, `kotlin.debug`, `Debug` CodeLens
+- [x] Java debug extension check, attach flow, tests
 
 ### Phase 12: Release 0.2.0
 

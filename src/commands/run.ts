@@ -5,7 +5,7 @@ import * as vscode from "vscode";
 import { analyzeFile, facadeClassName } from "../core/mainDetector";
 import { buildRunSteps, cacheKey, isScript, jarPathFor, RunSettings, RunStep, staleJars } from "../core/runCommand";
 import { installHelpUrl, resolveTool, Tool } from "../core/setupCheck";
-import { CommandRunner } from "../terminal/runTerminal";
+import { CommandRunner, RunObserver } from "../terminal/runTerminal";
 
 export interface RunOptions {
   /** Directory for compiled jars. */
@@ -13,6 +13,9 @@ export interface RunOptions {
   runner: () => CommandRunner;
   /** Replaces `kotlin.run.args` for this run. */
   args?: readonly string[];
+  /** Start the JVM suspended and waiting for a debugger on this port. */
+  debugPort?: number;
+  observer?: RunObserver;
 }
 
 /**
@@ -60,10 +63,10 @@ export async function runKotlinFile(target: vscode.Uri | undefined, options: Run
       jarKey,
       skipCompile: settings.useCache && !script && fs.existsSync(jar),
     },
-    { ...settings, kotlincPath: kotlinc, javaPath: java },
+    { ...settings, kotlincPath: kotlinc, javaPath: java, ...(options.debugPort && !script ? { debugPort: options.debugPort } : {}) },
   );
   const clear = vscode.workspace.getConfiguration("kotlin.run", document.uri).get<boolean>("clearTerminal", true);
-  options.runner().run(steps, path.dirname(filePath), filePath, clear);
+  options.runner().run(steps, path.dirname(filePath), filePath, clear, options.observer);
   return steps;
 }
 
@@ -99,7 +102,7 @@ export function resolveExecutable(command: string, tool: Tool): string | undefin
   return resolved;
 }
 
-async function resolveDocument(target: vscode.Uri | undefined): Promise<vscode.TextDocument | undefined> {
+export async function resolveDocument(target: vscode.Uri | undefined): Promise<vscode.TextDocument | undefined> {
   const uri = target instanceof vscode.Uri ? target : vscode.window.activeTextEditor?.document.uri;
   if (!uri) return undefined;
   const document = await vscode.workspace.openTextDocument(uri);

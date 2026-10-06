@@ -85,6 +85,12 @@
         "command": "kotlin.checkSetup",
         "title": "Check Setup",
         "category": "Kotlin"
+      },
+      {
+        "command": "kotlin.debug",
+        "title": "Debug Kotlin File",
+        "category": "Kotlin",
+        "icon": "$(debug-alt)"
       }
     ],
     "menus": {
@@ -98,6 +104,11 @@
           "command": "kotlin.runWithArguments",
           "when": "editorLangId == kotlin",
           "group": "navigation@2"
+        },
+        {
+          "command": "kotlin.debug",
+          "when": "editorLangId == kotlin && resourceExtname == .kt",
+          "group": "navigation@3"
         }
       ],
       "commandPalette": [
@@ -108,6 +119,10 @@
         {
           "command": "kotlin.runWithArguments",
           "when": "editorLangId == kotlin"
+        },
+        {
+          "command": "kotlin.debug",
+          "when": "editorLangId == kotlin && resourceExtname == .kt"
         }
       ]
     },

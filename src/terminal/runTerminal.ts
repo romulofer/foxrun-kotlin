@@ -15,9 +15,15 @@ const STYLE: Record<OutputKind, string> = {
 };
 const CLEAR = `${ESC}[2J${ESC}[3J${ESC}[H`;
 
+/** Follows one run: everything the steps print, and how the run ended. */
+export interface RunObserver {
+  output?(text: string): void;
+  exit?(code: number | null): void;
+}
+
 /** Executes run steps. Swappable so tests can observe runs without a terminal. */
 export interface CommandRunner {
-  run(steps: RunStep[], cwd: string, fileName: string, clear: boolean): void;
+  run(steps: RunStep[], cwd: string, fileName: string, clear: boolean, observer?: RunObserver): void;
 }
 
 /** Observes the compile step of runs shown in the terminal. */
@@ -39,14 +45,14 @@ export class TerminalRunner implements CommandRunner, vscode.Disposable {
     }
   });
 
-  run(steps: RunStep[], cwd: string, fileName: string, clear: boolean): void {
+  run(steps: RunStep[], cwd: string, fileName: string, clear: boolean, observer?: RunObserver): void {
     if (!this.terminal || !this.pty) {
       this.pty = new RunPty();
       this.terminal = vscode.window.createTerminal({ name: TERMINAL_NAME, pty: this.pty, iconPath: new vscode.ThemeIcon("play") });
     }
     this.terminal.show(true);
     this.hooks?.started(fileName, cwd);
-    this.pty.start(steps, cwd, fileName, clear, this.hooks);
+    this.pty.start(steps, cwd, fileName, clear, this.hooks, observer);
   }
 
   dispose(): void {
@@ -90,7 +96,7 @@ class RunPty implements vscode.Pseudoterminal {
     if (result.interrupt) this.session.kill();
   }
 
-  start(steps: RunStep[], cwd: string, fileName: string, clear: boolean, hooks?: RunHooks): void {
+  start(steps: RunStep[], cwd: string, fileName: string, clear: boolean, hooks?: RunHooks, observer?: RunObserver): void {
     const go = () => {
       this.session?.kill();
       this.input.reset();
@@ -103,9 +109,13 @@ class RunPty implements vscode.Pseudoterminal {
       // Output of a replaced session (e.g. its "stopped" line) is dropped.
       const session: ProcessSession = new ProcessSession(steps, cwd, fileName, {
         output: (text, kind) => {
-          if (this.session === session) this.output(text, kind);
+          if (this.session !== session) return;
+          this.output(text, kind);
+          observer?.output?.(text);
         },
-        exit: () => {},
+        exit: (code) => {
+          if (this.session === session) observer?.exit?.(code);
+        },
         compiled: (output, code) => {
           if (this.session === session) hooks?.compiled(fileName, cwd, output, code);
         },

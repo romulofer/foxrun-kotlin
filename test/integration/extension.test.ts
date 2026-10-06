@@ -7,7 +7,8 @@ import * as vscode from "vscode";
 import { findExecutable } from "../../src/core/executable";
 import type { RunStep } from "../../src/core/runCommand";
 import type { KotlinExtensionApi } from "../../src/extension";
-import type { CommandRunner } from "../../src/terminal/runTerminal";
+import type { DebugHost } from "../../src/commands/debug";
+import type { CommandRunner, RunObserver } from "../../src/terminal/runTerminal";
 
 const EXTENSION_ID = "LegendaryRedfox.foxrun-kotlin";
 
@@ -50,8 +51,11 @@ async function until<T>(probe: () => Promise<T | undefined>, timeoutMs = 10000):
 
 class RecordingRunner implements CommandRunner {
   readonly calls: { steps: RunStep[]; cwd: string; fileName: string }[] = [];
-  run(steps: RunStep[], cwd: string, fileName: string): void {
+  /** Lets a test play the part of the running program. */
+  onRun?: (steps: RunStep[], observer: RunObserver | undefined) => void;
+  run(steps: RunStep[], cwd: string, fileName: string, _clear?: boolean, observer?: RunObserver): void {
     this.calls.push({ steps, cwd, fileName });
+    this.onRun?.(steps, observer);
   }
 }
 
@@ -83,6 +87,18 @@ describe("Foxrun for Kotlin extension", () => {
       assert.equal(lenses.length, 1);
       assert.equal(lenses[0].range.start.line, 4);
       assert.match(lenses[0].command!.title, /Run/);
+    });
+
+    it("shows Debug next to Run, but not on scripts", async () => {
+      const debugLenses = async (name: string) => {
+        const document = await open(name);
+        const lenses = await vscode.commands.executeCommand<vscode.CodeLens[]>("vscode.executeCodeLensProvider", document.uri, 100);
+        return lenses.filter((l) => l.command?.command === "kotlin.debug");
+      };
+      const lenses = await debugLenses("hello.kt");
+      assert.equal(lenses.length, 1);
+      assert.equal(lenses[0].range.start.line, 4);
+      assert.equal((await debugLenses("script.kts")).length, 0);
     });
 
     it("shows nothing in a file without main", async () => {
@@ -238,6 +254,60 @@ describe("Foxrun for Kotlin extension", () => {
       } finally {
         await config().update("env", undefined, vscode.ConfigurationTarget.Global);
       }
+    });
+
+    describe("kotlin.debug", () => {
+      const started: Record<string, unknown>[] = [];
+      const host = (installed: boolean): DebugHost => ({
+        isInstalled: (id) => installed && id === "vscjava.vscode-java-debug",
+        startDebugging: async (_folder, config) => {
+          started.push(config);
+          return true;
+        },
+      });
+
+      beforeEach(() => {
+        started.length = 0;
+      });
+      afterEach(async () => (await api()).setDebugHost(undefined));
+
+      it("starts the JVM suspended and attaches the Java debugger", async () => {
+        runner.onRun = (steps, observer) => {
+          const agent = steps[steps.length - 1].args[0];
+          const port = /address=127\.0\.0\.1:(\d+)/.exec(agent)?.[1];
+          observer?.output?.(`Listening for transport dt_socket at address: ${port}\n`);
+        };
+        (await api()).setDebugHost(host(true));
+        const steps = await vscode.commands.executeCommand<RunStep[] | undefined>("kotlin.debug", fixture("hello.kt"));
+        assert.ok(steps, "debug should run the file");
+        const agent = steps[steps.length - 1].args[0];
+        assert.match(agent, /^-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=127\.0\.0\.1:\d+$/);
+        assert.equal(started.length, 1);
+        assert.equal(started[0].type, "java");
+        assert.equal(started[0].request, "attach");
+        assert.equal(started[0].port, Number(/:(\d+)$/.exec(agent)![1]));
+      });
+
+      it("does not run anything when no Java debugger is installed", async () => {
+        (await api()).setDebugHost(host(false));
+        const steps = await vscode.commands.executeCommand<RunStep[] | undefined>("kotlin.debug", fixture("hello.kt"));
+        assert.equal(steps, undefined);
+        assert.equal(runner.calls.length, 0);
+      });
+
+      it("refuses scripts", async () => {
+        (await api()).setDebugHost(host(true));
+        const steps = await vscode.commands.executeCommand<RunStep[] | undefined>("kotlin.debug", fixture("script.kts"));
+        assert.equal(steps, undefined);
+        assert.equal(runner.calls.length, 0);
+      });
+
+      it("does not attach when the program ends before listening", async () => {
+        runner.onRun = (_steps, observer) => observer?.exit?.(1);
+        (await api()).setDebugHost(host(true));
+        await vscode.commands.executeCommand("kotlin.debug", fixture("hello.kt"));
+        assert.equal(started.length, 0);
+      });
     });
 
     it("reports the resolved tools in Check Setup", async () => {

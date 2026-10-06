@@ -88,3 +88,25 @@ describe("runCommand cache and env", () => {
     assert.equal(buildRunSteps(target, { ...settings, env: {} })[1].env, undefined);
   });
 });
+
+describe("runCommand debugging", () => {
+  const target = { filePath: "/src/Main.kt", mainClass: "MainKt", outDir: "/out", jarKey: "k" };
+
+  it("starts the JVM suspended with a JDWP agent before the other JVM arguments", () => {
+    const steps = buildRunSteps(target, { ...settings, jvmArgs: ["-Xmx64m"], debugPort: 5005 });
+    const jar = jarPathFor(target.filePath, target.outDir, "k");
+    assert.deepEqual(steps[1].args, [
+      "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=127.0.0.1:5005",
+      "-Xmx64m",
+      "-cp",
+      jar,
+      "MainKt",
+    ]);
+  });
+
+  it("does not add the agent when not debugging, and never for scripts", () => {
+    assert.ok(!buildRunSteps(target, settings)[1].args.some((a) => a.includes("jdwp")));
+    const script = buildRunSteps({ filePath: "/s.kts", mainClass: "", outDir: "/out" }, { ...settings, debugPort: 5005 });
+    assert.ok(!script[0].args.some((a) => a.includes("jdwp")));
+  });
+});
