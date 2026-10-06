@@ -43,7 +43,48 @@ See [SPEC.md](SPEC.md). Each phase ends green (`npm run check && npm test`) and 
 - [x] README, CHANGELOG, LICENSE
 - [x] `npm run package` makes `.vsix`
 
-## Later (v0.2+)
+## v0.2 (see SPEC section 7)
+
+Each phase ends with `npm run check && npm test`, a commit, and docs/changelog updates where visible.
+
+### Phase 6: Grammar and highlighting (7.7)
+
+- [ ] Review `syntaxes/kotlin.tmLanguage.json` against the spec list
+- [ ] Failing grammar tests first, then grammar changes
+- [ ] Function call, generics, named args, lambda params, `it`, labels, constants, enum entries, KDoc tags
+
+### Phase 7: Run cache and run settings (7.1, 7.6)
+
+- [ ] `cacheKey`, `needsCompile`, stale jar cleanup, `useCache` setting, clear cache command
+- [ ] `argsParser.ts`, `kotlin.run.env`, `Run With Arguments...` command
+- [ ] `ProcessSession` env parameter, tests
+
+### Phase 8: Setup help (7.3)
+
+- [ ] Extended `findExecutable` search paths, `setupCheck.ts`
+- [ ] `Install Help` action, `Kotlin: Check Setup` command
+
+### Phase 9: Diagnostics (7.2)
+
+- [ ] `kotlincDiagnostics.ts` parser with tests
+- [ ] Collect compile output in `ProcessSession`, publish `DiagnosticCollection`
+- [ ] Terminal link provider
+
+### Phase 10: Member completion (7.4)
+
+- [ ] `stdlibMembers.ts`, `memberCompletion.ts` with tests
+- [ ] Wire into `completionProvider.ts` on `.`
+
+### Phase 11: Debugging (7.5)
+
+- [ ] `buildDebugSteps`, `kotlin.debug`, `Debug` CodeLens
+- [ ] Java debug extension check, attach flow, tests
+
+### Phase 12: Release 0.2.0
+
+- [ ] README (EN and PT), CHANGELOG, version bump, `.vsix`, integration tests green
+
+## Later (v0.3+)
 
 - Gradle/Maven run (`gradle run`, `mvn exec:java`)
 - `main` in `object` with `@JvmStatic`

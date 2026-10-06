@@ -106,3 +106,79 @@ Ordering (sortText): document symbols, workspace symbols, keywords, snippets, st
 | vscode-tmgrammar-test | grammar tests |
 | @vscode/test-cli, @vscode/test-electron | integration tests |
 | @vscode/vsce | packaging |
+
+## 7. v0.2 additions
+
+Scope: faster runs, compiler diagnostics, setup help, member completion, debugging, run arguments, grammar and highlighting upgrades. Gradle/Maven stays out of scope.
+
+### 7.1 Run cache (faster runs)
+
+- The jar name is derived from the file path and a hash of the source content plus the resolved `kotlinc` path. If that jar already exists, the compile step is skipped and the terminal prints `Using cached build`.
+- Old jars for the same source path are deleted after a successful new compile, so the cache does not grow without bound.
+- `kotlin.run.useCache` (default `true`) turns the cache off.
+- Command `Kotlin: Clear Build Cache` empties the build directory.
+- Core: `runCommand.ts` gains `cacheKey()` and a `needsCompile` flag on the target; no `vscode` import.
+
+### 7.2 Compiler diagnostics
+
+- Core `kotlincDiagnostics.ts` parses `kotlinc` output lines of the form `path:line:col: error|warning|info: message` (also `exception:` and lines without a column) into `{ file, line, column, severity, message }`. Continuation lines (source excerpt and `^` marker) are dropped.
+- The compile step's output is collected by `ProcessSession` (new `onCompileOutput`) and, when the step ends, published to a `DiagnosticCollection` named `kotlinc`. The collection is cleared for the file at the start of every run.
+- The `Kotlin Run` terminal registers a `TerminalLinkProvider` that makes `path:line:col` in compiler output clickable.
+- `kotlin.run.showDiagnostics` (default `true`).
+
+### 7.3 Setup help
+
+- `findExecutable` also looks in `KOTLIN_HOME/bin`, `JAVA_HOME/bin`, `~/.sdkman/candidates/{kotlin,java}/current/bin` and common Homebrew paths when the configured command is not on `PATH`.
+- If `kotlinc` or `java` is still missing, the error offers `Open Settings` and `Install Help`. `Install Help` opens the Kotlin install page (and the JDK page for `java`).
+- Command `Kotlin: Check Setup` reports the resolved paths and versions of `kotlinc` and `java` in a single message, or what is missing.
+- Core: `setupCheck.ts` builds the candidate path list and parses `-version` output; the adapter does the spawning.
+
+### 7.4 Member completion after `.`
+
+- Core `memberCompletion.ts` resolves the receiver of `expr.` from the text before the cursor to a type name using, in order: a literal (`"s"` is `String`, `1` is `Int`, `1.0` is `Double`, `true` is `Boolean`, `listOf(...)` is `List`, `mutableListOf` is `MutableList`, `mapOf` is `Map`, `setOf` is `Set`); a declared type annotation (`val x: T`, parameters); a constructor call initializer (`val x = Foo(...)`); `this`.
+- Members come from a table of standard library types in `stdlibMembers.ts` (String, CharSequence, Int/Long/Double/Boolean/Char, List/MutableList, Set/MutableSet, Map/MutableMap, Array, Sequence, Pair, Result, Regex, StringBuilder, Iterable collection extensions) and from classes declared in the current file or workspace (properties and functions, from `symbolExtractor`).
+- Nullable receivers (`T?`) also offer the same members.
+- When the receiver is unknown, nothing is offered after `.` except document words (current behaviour is kept as the fallback).
+- Members are sorted before the generic list, and function items insert `name($0)`.
+
+### 7.5 Debugging
+
+- A `Debug` CodeLens sits next to `Run` above every `main`. Command `kotlin.debug`, also in the editor title run menu and the palette.
+- Strategy: compile as for Run (cache applies), then launch `java -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=127.0.0.1:<free port> -cp <jar> <Main> <args>` in the `Kotlin Run` terminal, wait until the agent prints `Listening for transport`, then call `vscode.debug.startDebugging` with a `java` attach configuration (`hostName`, `port`, `projectName` unset).
+- This needs the `vscjava.vscode-java-debug` extension. If absent, show a message with an `Install` action that opens it in the Extensions view. Extension dependency is NOT declared, so Run keeps working without it.
+- Scripts (`.kts`) cannot be debugged; the lens is not shown for them.
+- Core: `buildDebugSteps()` in `runCommand.ts`, `freePort` helper in the adapter.
+
+### 7.6 Run with arguments and environment
+
+- Command `Kotlin: Run With Arguments...` shows an input box prefilled with the last arguments used for that file (stored in `workspaceState`), parsed with shell style quoting by core `argsParser.ts`, then runs normally with these arguments instead of `kotlin.run.args`.
+- New setting `kotlin.run.env` (object, string values) merged over the process environment for the run step. Applies to Run and Debug.
+- `ProcessSession` gets an `env` parameter.
+
+### 7.7 Grammar and highlighting
+
+Grammar fixes and additions (each with a tmgrammar test):
+
+- Multi dollar interpolation (`$$"..."`, `$${x}`), nested quotes and nested templates inside `${ ... }`.
+- `context(...)` parameters, `value class`, `fun interface`, `data object`, `enum class`, `annotation class`, `sealed interface`, `expect`/`actual`, `when` with guards (`if` after a condition), `typealias`.
+- Annotation use site targets (`@get:JvmName`, `@field:`), annotations with arguments, backtick identifiers.
+- Raw string `trimIndent()`/`trimMargin()` untouched; no change in scopes.
+
+Highlighting upgrades (scopes only, no semantic provider):
+
+- Function calls (`entity.name.function.call`), including generic calls `foo<T>(...)`, distinct from declarations.
+- Generic type parameters in declarations and arguments, type constraints (`where`), nullable `?` and star projections.
+- Named arguments (`variable.parameter.named`), lambda parameters `{ a, b -> }`, implicit `it`, `this@label` and `return@label`.
+- Constants (`UPPER_SNAKE`), enum entries, properties after `.`, companion object references.
+- KDoc tags (`@param`, `@return`, `[Link]`) scoped inside doc comments.
+- Numeric literal suffixes, escape sequences and Unicode escapes keep their current scopes.
+
+### 7.8 Acceptance criteria (v0.2)
+
+- Running an unchanged file twice skips compile the second time (unit test on `needsCompile`, integration test checks no `compile` step).
+- A file with a type error shows a red squiggle at the right line and column and an entry in Problems; fixing it and rerunning clears it.
+- With `kotlinc` removed from `PATH` but present under `~/.sdkman`, run still works.
+- `"abc".` offers `length`, `uppercase`, `substring`; `listOf(1).` offers `map`, `filter`, `size`; `val p = Person("a"); p.` offers `Person` members.
+- `Debug` lens starts a debug session that stops at a breakpoint (manual check, plus unit tests on the generated command and the java debug presence check).
+- `Run With Arguments...` passes the arguments to `main` and remembers them.
+- `npm test` and `npm run test:integration` are green; `npm run package` works.
