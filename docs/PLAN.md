@@ -49,9 +49,9 @@ Each phase ends with `npm run check && npm test`, a commit, and docs/changelog u
 
 ### Phase 6: Grammar and highlighting (7.7)
 
-- [ ] Review `syntaxes/kotlin.tmLanguage.json` against the spec list
-- [ ] Failing grammar tests first, then grammar changes
-- [ ] Function call, generics, named args, lambda params, `it`, labels, constants, enum entries, KDoc tags
+- [x] Review `syntaxes/kotlin.tmLanguage.json` against the spec list
+- [x] Failing grammar tests first, then grammar changes
+- [x] Function call, generics, named args, lambda params, `it`, labels, constants, enum entries, KDoc tags
 
 ### Phase 7: Run cache and run settings (7.1, 7.6)
 

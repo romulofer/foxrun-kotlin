@@ -17,7 +17,7 @@ fun main(args: Array<String>) {
 suspend fun <T> List<T>.second(): T = this[1]
 // <------- storage.modifier.kotlin
 //      ^^^ storage.type.function.kotlin
-//           ^ entity.name.type.kotlin
+//           ^ entity.name.type.parameter.kotlin
 //              ^^^^ entity.name.type.kotlin
 //                      ^^^^^^ entity.name.function.kotlin
 //                                    ^^^^ variable.language.this.kotlin
