@@ -80,6 +80,11 @@
         "command": "kotlin.clearBuildCache",
         "title": "Clear Build Cache",
         "category": "Kotlin"
+      },
+      {
+        "command": "kotlin.checkSetup",
+        "title": "Check Setup",
+        "category": "Kotlin"
       }
     ],
     "menus": {

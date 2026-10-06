@@ -1,7 +1,8 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { CLEAR_CACHE_COMMAND, RUN_WITH_ARGS_COMMAND } from "./commands/ids";
+import { CHECK_SETUP_COMMAND, CLEAR_CACHE_COMMAND, RUN_WITH_ARGS_COMMAND } from "./commands/ids";
 import { clearBuildCache, runKotlinFile } from "./commands/run";
+import { checkSetup } from "./commands/setup";
 import { formatArgs, parseArgs } from "./core/argsParser";
 import { KotlinCompletionProvider } from "./providers/completionProvider";
 import { RUN_COMMAND, RunCodeLensProvider } from "./providers/runCodeLensProvider";
@@ -55,6 +56,7 @@ export function activate(context: vscode.ExtensionContext): KotlinExtensionApi {
       await context.workspaceState.update(key, args);
       return runKotlinFile(target, { outDir, runner: () => runner, args });
     }),
+    vscode.commands.registerCommand(CHECK_SETUP_COMMAND, () => checkSetup()),
     vscode.commands.registerCommand(CLEAR_CACHE_COMMAND, () => {
       const removed = clearBuildCache(outDir);
       void vscode.window.showInformationMessage(`Cleared ${removed} cached build${removed === 1 ? "" : "s"}.`);

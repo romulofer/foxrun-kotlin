@@ -216,6 +216,20 @@ describe("Foxrun for Kotlin extension", () => {
       }
     });
 
+    it("reports the resolved tools in Check Setup", async () => {
+      const lines = (await vscode.commands.executeCommand<string[]>("kotlin.checkSetup"))!;
+      assert.equal(lines.length, 2);
+      assert.match(lines[0], new RegExp(`^kotlinc: .* at ${path.join(toolsDir, "kotlinc").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`));
+      assert.match(lines[1], /^java: /);
+      await config().update("javaPath", path.join(toolsDir, "missing-java"), vscode.ConfigurationTarget.Global);
+      try {
+        const broken = (await vscode.commands.executeCommand<string[]>("kotlin.checkSetup"))!;
+        assert.match(broken[1], /^java: not found/);
+      } finally {
+        await config().update("javaPath", path.join(toolsDir, "java"), vscode.ConfigurationTarget.Global);
+      }
+    });
+
     it("runs the active editor when no uri is given", async () => {
       await open("hello.kt");
       await vscode.commands.executeCommand("kotlin.run");

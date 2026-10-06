@@ -61,8 +61,8 @@ Each phase ends with `npm run check && npm test`, a commit, and docs/changelog u
 
 ### Phase 8: Setup help (7.3)
 
-- [ ] Extended `findExecutable` search paths, `setupCheck.ts`
-- [ ] `Install Help` action, `Kotlin: Check Setup` command
+- [x] Extended `findExecutable` search paths, `setupCheck.ts`
+- [x] `Install Help` action, `Kotlin: Check Setup` command
 
 ### Phase 9: Diagnostics (7.2)
 

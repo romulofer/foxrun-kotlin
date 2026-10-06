@@ -1,9 +1,10 @@
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { findExecutable } from "../core/executable";
 import { analyzeFile, facadeClassName } from "../core/mainDetector";
 import { buildRunSteps, cacheKey, isScript, jarPathFor, RunSettings, RunStep, staleJars } from "../core/runCommand";
+import { installHelpUrl, resolveTool, Tool } from "../core/setupCheck";
 import { CommandRunner } from "../terminal/runTerminal";
 
 export interface RunOptions {
@@ -43,8 +44,8 @@ export async function runKotlinFile(target: vscode.Uri | undefined, options: Run
 
   const settings = { ...readSettings(document.uri), ...(options.args ? { args: options.args } : {}) };
   // Resolve to absolute paths: processes are spawned without a shell.
-  const kotlinc = resolveExecutable(settings.kotlincPath, "kotlin.run.kotlincPath");
-  const java = script ? settings.javaPath : resolveExecutable(settings.javaPath, "kotlin.run.javaPath");
+  const kotlinc = resolveExecutable(settings.kotlincPath, "kotlinc");
+  const java = script ? settings.javaPath : resolveExecutable(settings.javaPath, "java");
   if (!kotlinc || !java) return undefined;
 
   fs.mkdirSync(options.outDir, { recursive: true });
@@ -89,9 +90,12 @@ export function clearBuildCache(outDir: string): number {
   return removed;
 }
 
-function resolveExecutable(command: string, setting: string): string | undefined {
-  const resolved = findExecutable(command, process.env, process.platform);
-  if (!resolved) void showMissingExecutable(command, setting);
+const SETTING: Record<Tool, string> = { kotlinc: "kotlin.run.kotlincPath", java: "kotlin.run.javaPath" };
+
+/** Resolves a configured command, checking well known install locations for bare tool names. */
+export function resolveExecutable(command: string, tool: Tool): string | undefined {
+  const resolved = resolveTool(command, process.env, os.homedir(), process.platform);
+  if (!resolved) void showMissingExecutable(command, tool);
   return resolved;
 }
 
@@ -114,12 +118,16 @@ function readSettings(uri: vscode.Uri): RunSettings & { useCache: boolean } {
   };
 }
 
-async function showMissingExecutable(exe: string, setting: string): Promise<void> {
+async function showMissingExecutable(exe: string, tool: Tool): Promise<void> {
+  const setting = SETTING[tool];
   const choice = await vscode.window.showErrorMessage(
-    `Could not find '${exe}'. Install it or set '${setting}'.`,
+    `Could not find '${exe}'. Install ${tool === "kotlinc" ? "the Kotlin compiler" : "a JDK"} or set '${setting}'.`,
     "Open Settings",
+    "Install Help",
   );
   if (choice === "Open Settings") {
     await vscode.commands.executeCommand("workbench.action.openSettings", setting);
+  } else if (choice === "Install Help") {
+    await vscode.env.openExternal(vscode.Uri.parse(installHelpUrl(tool)));
   }
 }
