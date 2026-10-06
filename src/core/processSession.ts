@@ -61,6 +61,7 @@ export class ProcessSession {
     const step = this.steps[index];
     if (!step) return;
     if (step.kind === "compile") this.events.output(`Compiling ${path.basename(this.fileName)}...\n`, "info");
+    if (step.note) this.events.output(`${step.note}\n`, "info");
 
     let child: ChildProcess;
     try {
@@ -97,7 +98,7 @@ export class ProcessSession {
   }
 
   private spawnStep(step: RunStep): ChildProcess {
-    const options = { cwd: this.cwd, env: process.env };
+    const options = { cwd: this.cwd, env: step.env ? { ...process.env, ...step.env } : process.env };
     // Windows can only launch .bat/.cmd (kotlinc.bat) through a shell.
     if (this.platform === "win32" && /\.(bat|cmd)$/i.test(step.command)) {
       const line = [step.command, ...step.args].map(quoteForCmd).join(" ");

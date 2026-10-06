@@ -3,13 +3,15 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import { findExecutable } from "../core/executable";
 import { analyzeFile, facadeClassName } from "../core/mainDetector";
-import { buildRunSteps, isScript, RunSettings, RunStep } from "../core/runCommand";
+import { buildRunSteps, cacheKey, isScript, jarPathFor, RunSettings, RunStep, staleJars } from "../core/runCommand";
 import { CommandRunner } from "../terminal/runTerminal";
 
 export interface RunOptions {
   /** Directory for compiled jars. */
   outDir: string;
   runner: () => CommandRunner;
+  /** Replaces `kotlin.run.args` for this run. */
+  args?: readonly string[];
 }
 
 /**
@@ -39,20 +41,52 @@ export async function runKotlinFile(target: vscode.Uri | undefined, options: Run
     return undefined;
   }
 
-  const settings = readSettings(document.uri);
+  const settings = { ...readSettings(document.uri), ...(options.args ? { args: options.args } : {}) };
   // Resolve to absolute paths: processes are spawned without a shell.
   const kotlinc = resolveExecutable(settings.kotlincPath, "kotlin.run.kotlincPath");
   const java = script ? settings.javaPath : resolveExecutable(settings.javaPath, "kotlin.run.javaPath");
   if (!kotlinc || !java) return undefined;
 
   fs.mkdirSync(options.outDir, { recursive: true });
+  const jarKey = cacheKey(document.getText(), kotlinc);
+  const jar = jarPathFor(filePath, options.outDir, jarKey);
+  if (!script) removeStaleJars(filePath, options.outDir, path.basename(jar));
   const steps = buildRunSteps(
-    { filePath, mainClass: facadeClassName(filePath, info), outDir: options.outDir },
+    {
+      filePath,
+      mainClass: facadeClassName(filePath, info),
+      outDir: options.outDir,
+      jarKey,
+      skipCompile: settings.useCache && !script && fs.existsSync(jar),
+    },
     { ...settings, kotlincPath: kotlinc, javaPath: java },
   );
   const clear = vscode.workspace.getConfiguration("kotlin.run", document.uri).get<boolean>("clearTerminal", true);
   options.runner().run(steps, path.dirname(filePath), filePath, clear);
   return steps;
+}
+
+function removeStaleJars(filePath: string, outDir: string, keep: string): void {
+  try {
+    for (const name of staleJars(filePath, fs.readdirSync(outDir), keep)) fs.rmSync(path.join(outDir, name), { force: true });
+  } catch {
+    // The cache is an optimisation; failing to prune it must not block a run.
+  }
+}
+
+/** Deletes every cached jar. Returns how many files were removed. */
+export function clearBuildCache(outDir: string): number {
+  let removed = 0;
+  try {
+    for (const name of fs.readdirSync(outDir)) {
+      if (!name.endsWith(".jar")) continue;
+      fs.rmSync(path.join(outDir, name), { force: true });
+      removed++;
+    }
+  } catch {
+    // Nothing to clear when the directory does not exist yet.
+  }
+  return removed;
 }
 
 function resolveExecutable(command: string, setting: string): string | undefined {
@@ -68,13 +102,15 @@ async function resolveDocument(target: vscode.Uri | undefined): Promise<vscode.T
   return document.languageId === "kotlin" ? document : undefined;
 }
 
-function readSettings(uri: vscode.Uri): RunSettings {
+function readSettings(uri: vscode.Uri): RunSettings & { useCache: boolean } {
   const config = vscode.workspace.getConfiguration("kotlin.run", uri);
   return {
     kotlincPath: config.get<string>("kotlincPath") || "kotlinc",
     javaPath: config.get<string>("javaPath") || "java",
     args: config.get<string[]>("args", []),
     jvmArgs: config.get<string[]>("jvmArgs", []),
+    env: config.get<Record<string, string>>("env", {}),
+    useCache: config.get<boolean>("useCache", true),
   };
 }
 

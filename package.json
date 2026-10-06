@@ -69,6 +69,17 @@
         "title": "Run Kotlin File",
         "category": "Kotlin",
         "icon": "$(play)"
+      },
+      {
+        "command": "kotlin.runWithArguments",
+        "title": "Run Kotlin File With Arguments...",
+        "category": "Kotlin",
+        "icon": "$(debug-start)"
+      },
+      {
+        "command": "kotlin.clearBuildCache",
+        "title": "Clear Build Cache",
+        "category": "Kotlin"
       }
     ],
     "menus": {
@@ -77,11 +88,20 @@
           "command": "kotlin.run",
           "when": "editorLangId == kotlin",
           "group": "navigation"
+        },
+        {
+          "command": "kotlin.runWithArguments",
+          "when": "editorLangId == kotlin",
+          "group": "navigation@2"
         }
       ],
       "commandPalette": [
         {
           "command": "kotlin.run",
+          "when": "editorLangId == kotlin"
+        },
+        {
+          "command": "kotlin.runWithArguments",
           "when": "editorLangId == kotlin"
         }
       ]
@@ -124,6 +144,19 @@
           "type": "boolean",
           "default": true,
           "description": "Offer top level declarations from other Kotlin files in the workspace."
+        },
+        "kotlin.run.useCache": {
+          "type": "boolean",
+          "default": true,
+          "description": "Skip compiling when the file and compiler have not changed since the last run."
+        },
+        "kotlin.run.env": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "description": "Environment variables added when the program runs."
         }
       }
     }

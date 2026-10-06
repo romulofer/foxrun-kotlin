@@ -67,3 +67,17 @@ describe("ProcessSession", () => {
     assert.equal(r.code, null);
   });
 });
+
+describe("ProcessSession notes and env", () => {
+  it("prints a step note before the step output", async () => {
+    const step: RunStep = { ...node("run", "console.log('out')"), note: "Using cached build" };
+    const r = await run([step]);
+    assert.match(r.text, /^Using cached build\nout\n/);
+  });
+
+  it("merges step env over the process env", async () => {
+    const step: RunStep = { ...node("run", "console.log(process.env.FOXRUN_T + ':' + typeof process.env.PATH)"), env: { FOXRUN_T: "yes" } };
+    const r = await run([step]);
+    assert.match(r.text, /^yes:string\n/);
+  });
+});

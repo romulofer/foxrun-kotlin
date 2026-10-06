@@ -167,9 +167,53 @@ describe("Foxrun for Kotlin extension", () => {
       assert.equal(compile.command, path.join(toolsDir, "kotlinc"));
       assert.deepEqual(compile.args.slice(0, 3), [uri.fsPath, "-include-runtime", "-d"]);
       const jar = compile.args[3];
-      assert.match(jar, /hello-[0-9a-f]{8}\.jar$/);
+      assert.match(jar, /hello-[0-9a-f]{8}-[0-9a-f]{8}\.jar$/);
       assert.equal(run.command, path.join(toolsDir, "java"));
       assert.deepEqual(run.args, ["-cp", jar, "demo.HelloKt", "one", "two words"]);
+    });
+
+    it("skips compiling when the jar for this source already exists", async () => {
+      const first = (await vscode.commands.executeCommand<RunStep[]>("kotlin.run", fixture("hello.kt")))!;
+      const jar = first[0].args[3];
+      fs.mkdirSync(path.dirname(jar), { recursive: true });
+      const stale = jar.replace(/-[0-9a-f]{8}\.jar$/, "-00000000.jar");
+      fs.writeFileSync(jar, "");
+      fs.writeFileSync(stale, "");
+      try {
+        const second = (await vscode.commands.executeCommand<RunStep[]>("kotlin.run", fixture("hello.kt")))!;
+        assert.equal(second.length, 1);
+        assert.equal(second[0].kind, "run");
+        assert.equal(second[0].note, "Using cached build");
+        assert.equal(fs.existsSync(stale), false, "stale jar should be pruned");
+
+        await config().update("useCache", false, vscode.ConfigurationTarget.Global);
+        const third = (await vscode.commands.executeCommand<RunStep[]>("kotlin.run", fixture("hello.kt")))!;
+        assert.deepEqual(third.map((x) => x.kind), ["compile", "run"]);
+      } finally {
+        await config().update("useCache", undefined, vscode.ConfigurationTarget.Global);
+        fs.rmSync(jar, { force: true });
+        fs.rmSync(stale, { force: true });
+      }
+    });
+
+    it("clears the build cache", async () => {
+      const first = (await vscode.commands.executeCommand<RunStep[]>("kotlin.run", fixture("hello.kt")))!;
+      const jar = first[0].args[3];
+      fs.mkdirSync(path.dirname(jar), { recursive: true });
+      fs.writeFileSync(jar, "");
+      await vscode.commands.executeCommand("kotlin.clearBuildCache");
+      assert.equal(fs.existsSync(jar), false);
+    });
+
+    it("passes kotlin.run.env to the program", async () => {
+      await config().update("env", { GREETING: "hi" }, vscode.ConfigurationTarget.Global);
+      try {
+        const steps = (await vscode.commands.executeCommand<RunStep[]>("kotlin.run", fixture("hello.kt")))!;
+        assert.equal(steps[0].env, undefined);
+        assert.deepEqual(steps[steps.length - 1].env, { GREETING: "hi" });
+      } finally {
+        await config().update("env", undefined, vscode.ConfigurationTarget.Global);
+      }
     });
 
     it("runs the active editor when no uri is given", async () => {

@@ -1,6 +1,6 @@
 import * as assert from "node:assert/strict";
 import * as path from "node:path";
-import { buildRunSteps, isScript, jarPathFor, quoteForCmd, RunSettings } from "../../src/core/runCommand";
+import { buildRunSteps, cacheKey, isScript, jarPathFor, quoteForCmd, RunSettings, staleJars } from "../../src/core/runCommand";
 
 const settings: RunSettings = { kotlincPath: "/k/kotlinc", javaPath: "/j/java", args: [], jvmArgs: [] };
 
@@ -37,5 +37,54 @@ describe("runCommand", () => {
     assert.equal(quoteForCmd("C:\\plain\\x.kt"), "C:\\plain\\x.kt");
     assert.equal(quoteForCmd("C:\\a b\\x.kt"), "\"C:\\a b\\x.kt\"");
     assert.equal(quoteForCmd("say \"hi\""), "\"say \"\"hi\"\"\"");
+  });
+});
+
+describe("runCommand cache and env", () => {
+  const target = { filePath: "/src/Main.kt", mainClass: "MainKt", outDir: "/out" };
+
+  it("derives a cache key from source and compiler", () => {
+    const a = cacheKey("fun main() {}", "/k/kotlinc");
+    assert.match(a, /^[0-9a-f]{8}$/);
+    assert.equal(a, cacheKey("fun main() {}", "/k/kotlinc"));
+    assert.notEqual(a, cacheKey("fun main() { }", "/k/kotlinc"));
+    assert.notEqual(a, cacheKey("fun main() {}", "/other/kotlinc"));
+  });
+
+  it("puts the key in the jar name", () => {
+    const plain = jarPathFor("/x/Main.kt", "/out");
+    const keyed = jarPathFor("/x/Main.kt", "/out", "deadbeef");
+    assert.equal(keyed, plain.replace(/\.jar$/, "-deadbeef.jar"));
+  });
+
+  it("skips the compile step when the build is cached", () => {
+    const steps = buildRunSteps({ ...target, jarKey: "abc12345", skipCompile: true }, settings);
+    const jar = jarPathFor(target.filePath, target.outDir, "abc12345");
+    assert.deepEqual(steps, [
+      { kind: "run", command: "/j/java", args: ["-cp", jar, "MainKt"], note: "Using cached build" },
+    ]);
+  });
+
+  it("compiles to the keyed jar when there is no cache hit", () => {
+    const steps = buildRunSteps({ ...target, jarKey: "abc12345" }, settings);
+    const jar = jarPathFor(target.filePath, target.outDir, "abc12345");
+    assert.equal(steps[0].kind, "compile");
+    assert.deepEqual(steps[0].args.slice(-2), ["-d", jar]);
+  });
+
+  it("lists only stale jars of the same source", () => {
+    const keep = path.basename(jarPathFor("/x/Main.kt", "/out", "bbbbbbbb"));
+    const old = path.basename(jarPathFor("/x/Main.kt", "/out", "aaaaaaaa"));
+    const other = path.basename(jarPathFor("/y/Main.kt", "/out", "aaaaaaaa"));
+    assert.deepEqual(staleJars("/x/Main.kt", [keep, old, other, "notes.txt"], keep), [old]);
+  });
+
+  it("passes env to run steps only when set", () => {
+    const withEnv = buildRunSteps({ ...target, jarKey: "k" }, { ...settings, env: { A: "1" } });
+    assert.equal(withEnv[0].env, undefined);
+    assert.deepEqual(withEnv[1].env, { A: "1" });
+    const script = buildRunSteps({ filePath: "/s.kts", mainClass: "", outDir: "/out" }, { ...settings, env: { A: "1" } });
+    assert.deepEqual(script[0].env, { A: "1" });
+    assert.equal(buildRunSteps(target, { ...settings, env: {} })[1].env, undefined);
   });
 });

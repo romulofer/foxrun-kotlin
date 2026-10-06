@@ -55,9 +55,9 @@ Each phase ends with `npm run check && npm test`, a commit, and docs/changelog u
 
 ### Phase 7: Run cache and run settings (7.1, 7.6)
 
-- [ ] `cacheKey`, `needsCompile`, stale jar cleanup, `useCache` setting, clear cache command
-- [ ] `argsParser.ts`, `kotlin.run.env`, `Run With Arguments...` command
-- [ ] `ProcessSession` env parameter, tests
+- [x] `cacheKey`, `needsCompile`, stale jar cleanup, `useCache` setting, clear cache command
+- [x] `argsParser.ts`, `kotlin.run.env`, `Run With Arguments...` command
+- [x] `ProcessSession` env parameter, tests
 
 ### Phase 8: Setup help (7.3)
 
