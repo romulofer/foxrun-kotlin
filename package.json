@@ -1,6 +1,6 @@
 {
-  "name": "run-kotlin-vscode",
-  "displayName": "Run Kotlin",
+  "name": "foxrun-kotlin",
+  "displayName": "Foxrun for Kotlin",
   "description": "Kotlin syntax highlighting, autocomplete and a one click Run button over main functions. Lightweight, no language server.",
   "version": "0.1.0",
   "publisher": "LegendaryRedfox",
@@ -15,12 +15,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/romulofer/run-kotlin-vscode.git"
+    "url": "https://github.com/romulofer/foxrun-kotlin.git"
   },
   "bugs": {
-    "url": "https://github.com/romulofer/run-kotlin-vscode/issues"
+    "url": "https://github.com/romulofer/foxrun-kotlin/issues"
   },
-  "homepage": "https://github.com/romulofer/run-kotlin-vscode#readme",
+  "homepage": "https://github.com/romulofer/foxrun-kotlin#readme",
   "engines": {
     "vscode": "^1.90.0"
   },

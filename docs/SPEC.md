@@ -1,4 +1,4 @@
-# Run Kotlin VSCode: Specification
+# Foxrun for Kotlin: Specification
 
 ## 1. Goal
 

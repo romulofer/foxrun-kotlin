@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="images/icon.png" width="128" alt="Kotlin logo">
+  <img src="images/icon.png" width="128" alt="Foxrun for Kotlin icon">
 </p>
 
-<h1 align="center">Run Kotlin</h1>
+<h1 align="center">Foxrun for Kotlin</h1>
 
 <p align="center">
   Kotlin syntax highlighting, autocomplete and a one click <b>Run</b> button for VS Code.<br>
@@ -74,8 +74,8 @@ Only single file programs are supported for now. Gradle and Maven projects are p
 ### Contributing
 
 ```sh
-git clone https://github.com/romulofer/run-kotlin-vscode.git
-cd run-kotlin-vscode
+git clone https://github.com/romulofer/foxrun-kotlin.git
+cd foxrun-kotlin
 npm install
 npm run build              # bundle to dist/extension.js
 npm test                   # unit and grammar tests
@@ -153,8 +153,8 @@ Por enquanto só programas de um único arquivo são suportados. Projetos Gradle
 ### Contribuindo
 
 ```sh
-git clone https://github.com/romulofer/run-kotlin-vscode.git
-cd run-kotlin-vscode
+git clone https://github.com/romulofer/foxrun-kotlin.git
+cd foxrun-kotlin
 npm install
 npm run build              # gera dist/extension.js
 npm test                   # testes unitários e de gramática

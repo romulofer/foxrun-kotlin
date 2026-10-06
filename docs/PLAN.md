@@ -1,4 +1,4 @@
-# Run Kotlin VSCode: Implementation Plan
+# Foxrun for Kotlin: Implementation Plan
 
 See [SPEC.md](SPEC.md). Each phase ends green (`npm run check && npm test`) and with a commit.
 

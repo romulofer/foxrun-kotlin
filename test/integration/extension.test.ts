@@ -9,7 +9,7 @@ import type { RunStep } from "../../src/core/runCommand";
 import type { KotlinExtensionApi } from "../../src/extension";
 import type { CommandRunner } from "../../src/terminal/runTerminal";
 
-const EXTENSION_ID = "LegendaryRedfox.run-kotlin-vscode";
+const EXTENSION_ID = "LegendaryRedfox.foxrun-kotlin";
 
 function fixture(name: string): vscode.Uri {
   const folder = vscode.workspace.workspaceFolders?.[0];
@@ -55,7 +55,7 @@ class RecordingRunner implements CommandRunner {
   }
 }
 
-describe("Run Kotlin extension", () => {
+describe("Foxrun for Kotlin extension", () => {
   before(async () => {
     await api();
   });
